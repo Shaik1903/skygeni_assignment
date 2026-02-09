@@ -2,3 +2,16 @@ IMPLEMENTATION_PLAN.md
 SkyGeni – Sales Intelligence Challenge.md
 
 .env
+
+# Virtual environment
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
