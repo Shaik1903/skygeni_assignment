@@ -70,17 +70,19 @@ skygeni_opus/
 ## 📊 Dashboard Pages
 
 ### 🏠 Home (Overview)
-- **5 KPI Cards**: Win Rate, Revenue, Deals, Cycle Time, Deal Velocity Index
+- **5 KPI Cards**: Win Rate, Revenue, Deals, Cycle Time, Deal Qualification Efficiency
+- **Custom Metrics Spotlight**: DQE, RCR, and SMI summary cards
 - **Interactive Charts**: Win rate trend, revenue by quarter, segment heatmap
 - **Lead Source Analysis**: Pie chart showing conversion by source
 - **Rep Leaderboard**: Top performing sales reps
-- **Auto-Generated Insights**: Key findings with severity levels
-- **Top Recommendations**: Quick action items
+- **Auto-Generated Insights**: 6+ data-driven findings from custom metrics
+- **EDA Findings**: Complementary exploratory analysis results
 
 ### 🎯 Win Rate Drivers
 - Feature importance analysis (simulated SHAP-like)
 - Segment deep dives (region, industry, product, lead source)
-- Win Pressure Score visualization
+- **Segment Momentum Index (SMI)** — composite trend indicator
+- **Deal Qualification Efficiency (DQE)** by region
 - Best vs. worst performing segments
 
 ### 📈 Revenue Forecast
@@ -105,13 +107,14 @@ skygeni_opus/
 
 ---
 
-## 📈 Custom Metrics
+## 📈 Custom Metrics (Invented for This Analysis)
 
-| Metric | Formula | Purpose |
-|--------|---------|---------|
-| **Deal Velocity Index (DVI)** | `(Amount / Cycle Days) / Median` | Measures revenue efficiency per day |
-| **Win Pressure Score** | `(Segment Win Rate × Volume) / Overall Rate` | Shows segment impact on overall performance |
-| **Rep Consistency Score** | `1 - (StdDev / Mean) of monthly rates` | Identifies stable vs. volatile performers |
+| Metric | Formula | Business Question |
+|--------|---------|-------------------|
+| **Deal Qualification Efficiency (DQE)** | `1 - (Median Lost Cycle / Median Won Cycle)` | Are we wasting sales capacity on dead deals? |
+| **Revenue Concentration Risk (RCR)** | `HHI × N` (Herfindahl-inspired) | How exposed is revenue to one segment? |
+| **Segment Momentum Index (SMI)** | `0.5×WR_Δ + 0.3×Vol_Δ + 0.2×Size_Δ` | Which segments are gaining or losing steam? |
+| **Deal Velocity Index (DVI)** | `(Amount / Cycle Days) / Median` | Revenue efficiency per day of effort |
 
 ---
 

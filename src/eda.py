@@ -268,13 +268,22 @@ def generate_eda_insights(df: pd.DataFrame) -> List[Dict[str, str]]:
     
     # 1. Win Rate Trend Analysis
     trend = analyze_win_rate_trends(df)
+    # Always generate a trend insight
     if trend["trend_direction"] == "declining":
         insights.append({
             "category": "Trend Alert",
             "emoji": "📉",
-            "insight": f"Win rate has declined {trend['decline_from_peak']:.1f} percentage points from peak ({trend['peak_quarter']}: {trend['peak_rate']:.1f}% → {trend['current_quarter']}: {trend['current_rate']:.1f}%)",
+            "insight": f"Win rate has declined {abs(trend['decline_from_peak']):.1f}pp from peak ({trend['peak_quarter']}: {trend['peak_rate']:.1f}% to {trend['current_quarter']}: {trend['current_rate']:.1f}%)",
             "severity": "high",
             "action": "Investigate what changed between peak and current periods - new competitors, process changes, or team turnover?"
+        })
+    else:
+        insights.append({
+            "category": "Win Rate Trend",
+            "emoji": "📈",
+            "insight": f"Win rate is {trend['trend_direction']} - currently {trend['current_rate']:.1f}% ({trend['current_quarter']}), peak was {trend['peak_rate']:.1f}%",
+            "severity": "low",
+            "action": "Monitor quarterly to detect any emerging downward trends early"
         })
     
     # 2. Segment Analysis
@@ -282,13 +291,13 @@ def generate_eda_insights(df: pd.DataFrame) -> List[Dict[str, str]]:
     
     # Region insights
     region_df = segments["region"]
-    underperforming_regions = region_df[region_df["vs_overall"] < -5]
-    for _, row in underperforming_regions.iterrows():
+    underperforming_regions = region_df[region_df["vs_overall"] < -1]
+    for _, row in underperforming_regions.head(2).iterrows():
         insights.append({
             "category": "Regional Issue",
             "emoji": "🌍",
             "insight": f"{row['region']} has {row['win_rate']:.1f}% win rate ({abs(row['vs_overall']):.1f}pp below average) with {row['total_deals']} deals",
-            "severity": "high" if row["deal_share"] > 15 else "medium",
+            "severity": "high" if abs(row['vs_overall']) > 5 else "medium",
             "action": f"Audit {row['region']} sales process, local competition, and rep performance"
         })
     
@@ -297,12 +306,13 @@ def generate_eda_insights(df: pd.DataFrame) -> List[Dict[str, str]]:
     best_source = source_df.iloc[0]
     worst_source = source_df.iloc[-1]
     
-    if best_source["win_rate"] > worst_source["win_rate"] * 1.5:
+    if worst_source["win_rate"] > 0:
+        ratio = best_source['win_rate'] / worst_source['win_rate']
         insights.append({
             "category": "Lead Source",
             "emoji": "🎯",
-            "insight": f"{best_source['lead_source']} leads convert at {best_source['win_rate']:.1f}% vs {worst_source['lead_source']} at {worst_source['win_rate']:.1f}% ({(best_source['win_rate']/worst_source['win_rate']):.1f}x better)",
-            "severity": "medium",
+            "insight": f"{best_source['lead_source']} leads convert at {best_source['win_rate']:.1f}% vs {worst_source['lead_source']} at {worst_source['win_rate']:.1f}% ({ratio:.1f}x better)",
+            "severity": "high" if ratio > 1.5 else "medium",
             "action": f"Increase investment in {best_source['lead_source']} channel and review {worst_source['lead_source']} lead quality"
         })
     

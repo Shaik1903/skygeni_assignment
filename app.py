@@ -146,11 +146,16 @@ def create_kpi_card(value, label, change=None, prefix="", suffix=""):
 def create_insight_card(insight):
     """Create a styled insight card."""
     severity_class = f"insight-{insight['severity']}"
+    # Support both old-style (action) and new-style (business_action) insights
+    action_text = insight.get('business_action', insight.get('action', ''))
+    impact_text = insight.get('estimated_impact', '')
+    impact_html = f'<br/><small style="color: #48bb78;">Impact: {impact_text}</small>' if impact_text else ''
     return f"""
     <div class="insight-card {severity_class}">
         <strong>{insight['emoji']} {insight['category']}</strong><br/>
         <span style="color: #e2e8f0;">{insight['insight']}</span><br/>
-        <small style="color: #718096;">→ {insight['action']}</small>
+        <small style="color: #718096;">Action: {action_text}</small>
+        {impact_html}
     </div>
     """
 
@@ -233,11 +238,11 @@ def main():
         ), unsafe_allow_html=True)
     
     with col5:
-        # Deal Velocity Index
-        dvi = metrics['df_with_dvi']['deal_velocity_index'].mean()
+        # Deal Qualification Efficiency
+        dqe_score = float(metrics['dqe_overall']['dqe_score'].iloc[0])
         st.markdown(create_kpi_card(
-            f"{dvi:.2f}",
-            "Deal Velocity Index"
+            f"{dqe_score:.2f}",
+            "Qualification Efficiency"
         ), unsafe_allow_html=True)
     
     st.divider()
@@ -415,49 +420,71 @@ def main():
     st.divider()
     
     # =====================
+    # CUSTOM METRICS SPOTLIGHT
+    # =====================
+    st.markdown("### 📐 Custom Metrics Spotlight")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        dqe = metrics['dqe_overall']
+        dqe_score = float(dqe['dqe_score'].iloc[0])
+        wasted = float(dqe['wasted_capacity_days'].iloc[0])
+        st.markdown(f"""
+        <div class="kpi-card" style="text-align:left;">
+            <p class="kpi-label">Deal Qualification Efficiency (DQE)</p>
+            <p class="kpi-value" style="font-size:2rem;">{dqe_score:.2f}</p>
+            <span style="color:#a0aec0;">Lost deals take nearly as long as wins.</span><br/>
+            <span style="color:#f56565;">~{wasted:,.0f} rep-days wasted</span>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        rcr = metrics['rcr_region']
+        risk_color = '#48bb78' if rcr['risk_level'] == 'Healthy' else '#f56565'
+        st.markdown(f"""
+        <div class="kpi-card" style="text-align:left;">
+            <p class="kpi-label">Revenue Concentration Risk (Region)</p>
+            <p class="kpi-value" style="font-size:2rem;">{rcr['rcr_score']:.2f}</p>
+            <span style="color:{risk_color};">{rcr['risk_level']}</span><br/>
+            <span style="color:#a0aec0;">Top: {rcr['top_segment']} ({rcr['top_segment_share']}%)</span>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        smi = metrics['smi_region']
+        declining = smi[smi['smi_score'] < -0.05]
+        growing = smi[smi['smi_score'] > 0.05]
+        st.markdown(f"""
+        <div class="kpi-card" style="text-align:left;">
+            <p class="kpi-label">Segment Momentum Index (Region)</p>
+            <p class="kpi-value" style="font-size:2rem;">{len(declining)} declining</p>
+            <span style="color:#f56565;">{len(declining)} regions losing steam</span><br/>
+            <span style="color:#48bb78;">{len(growing)} regions growing</span>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.divider()
+    
+    # =====================
     # INSIGHTS SECTION
     # =====================
     col1, col2 = st.columns([3, 2])
     
     with col1:
-        st.markdown("### 💡 Key Insights")
+        st.markdown("### 💡 Key Insights (from Custom Metrics)")
         
-        insights = eda_results['insights']
-        for insight in insights[:5]:
+        # Use insights from NEW custom metrics
+        metric_insights = identify_key_insights(filtered_df, metrics)
+        for insight in metric_insights[:5]:
             st.markdown(create_insight_card(insight), unsafe_allow_html=True)
     
     with col2:
-        st.markdown("### 🎯 Top Recommendations")
+        st.markdown("### 📊 EDA Findings")
         
-        recommendations = [
-            {
-                "priority": "HIGH",
-                "action": "Audit APAC sales process",
-                "impact": "Could improve win rate by 5-8%",
-                "icon": "🌏"
-            },
-            {
-                "priority": "HIGH", 
-                "action": "Increase referral program investment",
-                "impact": "2x better conversion rate",
-                "icon": "🤝"
-            },
-            {
-                "priority": "MEDIUM",
-                "action": "Add 60-day deal checkpoint",
-                "impact": "Early stall detection",
-                "icon": "⏱️"
-            }
-        ]
-        
-        for rec in recommendations:
-            priority_color = "#f56565" if rec["priority"] == "HIGH" else "#ed8936"
-            st.markdown(f"""
-            <div style="background: #1a202c; border-radius: 8px; padding: 12px; margin: 8px 0; border-left: 3px solid {priority_color};">
-                <strong>{rec['icon']} {rec['action']}</strong><br/>
-                <small style="color: #718096;">{rec['impact']}</small>
-            </div>
-            """, unsafe_allow_html=True)
+        eda_insights = eda_results['insights']
+        for insight in eda_insights[:4]:
+            st.markdown(create_insight_card(insight), unsafe_allow_html=True)
     
     # =====================
     # FOOTER
