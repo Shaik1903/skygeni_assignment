@@ -70,8 +70,8 @@ skygeni_opus/
 ## 📊 Dashboard Pages
 
 ### 🏠 Home (Overview)
-- **5 KPI Cards**: Win Rate, Revenue, Deals, Cycle Time, Deal Qualification Efficiency
-- **Custom Metrics Spotlight**: DQE, RCR, and SMI summary cards
+- **5 KPI Cards**: Win Rate, Revenue, Deals, Cycle Time, Pipeline Health (PQS)
+- **Custom Metrics Spotlight**: PQS, WRE, and SMI summary cards
 - **Interactive Charts**: Win rate trend, revenue by quarter, segment heatmap
 - **Lead Source Analysis**: Pie chart showing conversion by source
 - **Rep Leaderboard**: Top performing sales reps
@@ -82,7 +82,7 @@ skygeni_opus/
 - Feature importance analysis (simulated SHAP-like)
 - Segment deep dives (region, industry, product, lead source)
 - **Segment Momentum Index (SMI)** — composite trend indicator
-- **Deal Qualification Efficiency (DQE)** by region
+- **Pipeline Qualification Score (PQS)** by region with stall detection
 - Best vs. worst performing segments
 
 ### 📈 Revenue Forecast
@@ -111,8 +111,8 @@ skygeni_opus/
 
 | Metric | Formula | Business Question |
 |--------|---------|-------------------|
-| **Deal Qualification Efficiency (DQE)** | `1 - (Median Lost Cycle / Median Won Cycle)` | Are we wasting sales capacity on dead deals? |
-| **Revenue Concentration Risk (RCR)** | `HHI × N` (Herfindahl-inspired) | How exposed is revenue to one segment? |
+| **Pipeline Qualification Score (PQS)** | Combined DQE + Stall Detection (0–100 composite) | Are we wasting capacity on dead deals? Which ones should be killed? |
+| **Win Rate Elasticity (WRE)** | `Δ Win Rate% / Δ Deal Size%` across size buckets | Does chasing bigger deals hurt our win rate? |
 | **Segment Momentum Index (SMI)** | `0.5×WR_Δ + 0.3×Vol_Δ + 0.2×Size_Δ` | Which segments are gaining or losing steam? |
 | **Deal Velocity Index (DVI)** | `(Amount / Cycle Days) / Median` | Revenue efficiency per day of effort |
 

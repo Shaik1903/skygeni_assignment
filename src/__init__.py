@@ -17,8 +17,8 @@ from .data_loader import (
 
 from .metrics import (
     calculate_deal_velocity_index,
-    calculate_deal_qualification_efficiency,
-    calculate_revenue_concentration_risk,
+    calculate_pipeline_qualification_score,
+    calculate_win_rate_elasticity,
     calculate_segment_momentum_index,
     calculate_all_custom_metrics,
     get_metric_summary,
@@ -49,8 +49,8 @@ __all__ = [
     "load_and_prepare_data",
     # Metrics
     "calculate_deal_velocity_index",
-    "calculate_deal_qualification_efficiency",
-    "calculate_revenue_concentration_risk",
+    "calculate_pipeline_qualification_score",
+    "calculate_win_rate_elasticity",
     "calculate_segment_momentum_index",
     "calculate_all_custom_metrics",
     "get_metric_summary",

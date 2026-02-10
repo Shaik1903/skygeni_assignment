@@ -19,8 +19,8 @@ from data_loader import load_and_prepare_data, get_segment_analysis
 from metrics import (
     calculate_all_custom_metrics,
     calculate_segment_momentum_index,
-    calculate_deal_qualification_efficiency,
-    calculate_revenue_concentration_risk
+    calculate_pipeline_qualification_score,
+    calculate_win_rate_elasticity
 )
 
 st.set_page_config(page_title="Win Rate Drivers", page_icon="🎯", layout="wide")
@@ -58,8 +58,8 @@ def main():
         won_avg_cycle = df[df["is_won"] == 1]["sales_cycle_days"].mean()
         st.metric("Avg Cycle (Won)", f"{won_avg_cycle:.0f} days")
     with col4:
-        dqe_score = float(metrics['dqe_overall']['dqe_score'].iloc[0])
-        st.metric("Deal Qualification Efficiency", f"{dqe_score:.2f}")
+        pqs_score = metrics['pqs_overall']['pqs_score']
+        st.metric("Pipeline Qualification Score", f"{pqs_score:.0f}/100")
     
     st.divider()
     
@@ -256,49 +256,57 @@ def main():
     # =====================
     # DEAL QUALIFICATION EFFICIENCY
     # =====================
-    st.markdown("### ⚖️ Deal Qualification Efficiency (DQE)")
-    st.caption("How quickly we exit losing deals vs. invest in winning ones")
+    st.markdown("### ⚖️ Pipeline Qualification Score (PQS)")
+    st.caption("How quickly we exit losing deals & which deals are stalling past the winning window")
     
-    dqe_by_region = metrics['dqe_by_region']
+    pqs = metrics['pqs_overall']
+    pqs_by_region = metrics['pqs_by_region'].get('segment_breakdown')
     
     col1, col2 = st.columns(2)
     
     with col1:
-        fig = px.bar(
-            dqe_by_region.sort_values("dqe_score"),
-            x="dqe_score",
-            y="region",
-            orientation='h',
-            color="dqe_score",
-            color_continuous_scale="RdYlGn",
-            color_continuous_midpoint=0,
-            labels={"dqe_score": "DQE Score", "region": "Region"}
-        )
-        fig.add_vline(x=0, line_dash="dash", line_color="white",
-                      annotation_text="Equal cycles")
-        fig.update_layout(
-            template='plotly_dark',
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            height=300,
-            showlegend=False,
-            title="DQE by Region (negative = losers take longer than winners)"
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        if pqs_by_region is not None and len(pqs_by_region) > 0:
+            fig = px.bar(
+                pqs_by_region.sort_values("dqe_score"),
+                x="dqe_score",
+                y="region",
+                orientation='h',
+                color="dqe_score",
+                color_continuous_scale="RdYlGn",
+                color_continuous_midpoint=0,
+                labels={"dqe_score": "DQE Score", "region": "Region"}
+            )
+            fig.add_vline(x=0, line_dash="dash", line_color="white",
+                          annotation_text="Equal cycles")
+            fig.update_layout(
+                template='plotly_dark',
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                height=300,
+                showlegend=False,
+                title="DQE by Region (negative = losers take longer than winners)"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Insufficient data for regional DQE breakdown.")
     
     with col2:
         st.markdown("#### Interpretation")
-        overall_dqe = float(metrics['dqe_overall']['dqe_score'].iloc[0])
-        wasted = float(metrics['dqe_overall']['wasted_capacity_days'].iloc[0])
         st.markdown(f"""
-        **Overall DQE: {overall_dqe:.3f}** ({metrics['dqe_overall']['dqe_category'].iloc[0]})
+        **PQS: {pqs['pqs_score']:.0f}/100** ({pqs['pqs_category']})
         
-        - **DQE > 0.25**: Excellent — we exit losers fast
-        - **DQE ~ 0**: Poor — losers take as long as winners
-        - **DQE < 0**: Critical — losers take LONGER than wins
+        **Qualification Efficiency (DQE): {pqs['dqe_score']:.3f}**
+        - Won deals take {pqs['median_cycle_won']:.0f} days | Lost deals take {pqs['median_cycle_lost']:.0f} days
+        - DQE > 0.25 = Excellent | DQE ~ 0 = Poor | DQE < 0 = Critical
         
-        **Wasted capacity: ~{wasted:,.0f} rep-days** spent on deals
-        that ultimately lost but took too long to disqualify.
+        **Stall Detection:**
+        - Winning window: {pqs['winning_window_days']:.0f} days (P75 of won deals)
+        - {pqs['deals_stalling']} deals stalling ({pqs['stall_rate_pct']:.0f}% of pipeline)
+        - {pqs['deals_likely_dead']} deals likely dead
+        - Win rate gap: {pqs['on_pace_win_rate']:.0f}% (on-pace) vs {pqs['stalling_win_rate']:.0f}% (stalling)
+        
+        **Wasted capacity: ~{pqs['wasted_capacity_days']:,.0f} rep-days** spent on deals
+        past the winning window that should have been disqualified.
         """)
     
     st.divider()

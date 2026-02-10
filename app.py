@@ -116,9 +116,9 @@ def load_data():
     return df, validation_report
 
 
-@st.cache_data
+@st.cache_data(ttl=3600)  # Refresh hourly
 def get_all_analytics(_df):
-    """Calculate all analytics and cache."""
+    """Calculate all analytics and cache. v2: PQS+WRE+SMI metrics."""
     stats = get_summary_stats(_df)
     metrics = calculate_all_custom_metrics(_df)
     eda_results = run_full_eda(_df)
@@ -238,11 +238,11 @@ def main():
         ), unsafe_allow_html=True)
     
     with col5:
-        # Deal Qualification Efficiency
-        dqe_score = float(metrics['dqe_overall']['dqe_score'].iloc[0])
+        # Pipeline Qualification Score
+        pqs_score = metrics['pqs_overall']['pqs_score']
         st.markdown(create_kpi_card(
-            f"{dqe_score:.2f}",
-            "Qualification Efficiency"
+            f"{pqs_score:.0f}/100",
+            "Pipeline Health (PQS)"
         ), unsafe_allow_html=True)
     
     st.divider()
@@ -427,27 +427,27 @@ def main():
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        dqe = metrics['dqe_overall']
-        dqe_score = float(dqe['dqe_score'].iloc[0])
-        wasted = float(dqe['wasted_capacity_days'].iloc[0])
+        pqs = metrics['pqs_overall']
+        pqs_color = '#48bb78' if pqs['pqs_score'] >= 70 else ('#ed8936' if pqs['pqs_score'] >= 40 else '#f56565')
         st.markdown(f"""
         <div class="kpi-card" style="text-align:left;">
-            <p class="kpi-label">Deal Qualification Efficiency (DQE)</p>
-            <p class="kpi-value" style="font-size:2rem;">{dqe_score:.2f}</p>
-            <span style="color:#a0aec0;">Lost deals take nearly as long as wins.</span><br/>
-            <span style="color:#f56565;">~{wasted:,.0f} rep-days wasted</span>
+            <p class="kpi-label">Pipeline Qualification Score (PQS)</p>
+            <p class="kpi-value" style="font-size:2rem; color:{pqs_color};">{pqs['pqs_score']:.0f}/100</p>
+            <span style="color:#a0aec0;">DQE: {pqs['dqe_score']:.2f} | Stall rate: {pqs['stall_rate_pct']:.0f}%</span><br/>
+            <span style="color:#f56565;">{pqs['deals_stalling']} stalling, {pqs['deals_likely_dead']} likely dead</span><br/>
+            <span style="color:#a0aec0;">~{pqs['wasted_capacity_days']:,.0f} rep-days wasted</span>
         </div>
         """, unsafe_allow_html=True)
     
     with col2:
-        rcr = metrics['rcr_region']
-        risk_color = '#48bb78' if rcr['risk_level'] == 'Healthy' else '#f56565'
+        wre = metrics['wre']
+        wre_color = '#f56565' if wre['severity'] == 'high' else ('#ed8936' if wre['severity'] == 'medium' else '#48bb78')
         st.markdown(f"""
         <div class="kpi-card" style="text-align:left;">
-            <p class="kpi-label">Revenue Concentration Risk (Region)</p>
-            <p class="kpi-value" style="font-size:2rem;">{rcr['rcr_score']:.2f}</p>
-            <span style="color:{risk_color};">{rcr['risk_level']}</span><br/>
-            <span style="color:#a0aec0;">Top: {rcr['top_segment']} ({rcr['top_segment_share']}%)</span>
+            <p class="kpi-label">Win Rate Elasticity (WRE)</p>
+            <p class="kpi-value" style="font-size:2rem; color:{wre_color};">{wre['elasticity']:.2f}</p>
+            <span style="color:#a0aec0;">Small deals: {wre['smallest_bucket_wr']:.0f}% WR vs Large: {wre['largest_bucket_wr']:.0f}% WR</span><br/>
+            <span style="color:#48bb78;">Sweet spot: {wre['sweet_spot_range']} ({wre['sweet_spot_win_rate']:.0f}% WR)</span>
         </div>
         """, unsafe_allow_html=True)
     
