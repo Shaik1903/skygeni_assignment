@@ -36,6 +36,12 @@ from .eda import (
     run_full_eda
 )
 
+from .llm_insights import (
+    generate_llm_metric_insights,
+    generate_llm_eda_insights,
+    generate_llm_recommendations
+)
+
 __all__ = [
     # Data loader
     "load_data",
@@ -63,5 +69,9 @@ __all__ = [
     "analyze_sales_rep_deep",
     "analyze_time_patterns",
     "generate_eda_insights",
-    "run_full_eda"
+    "run_full_eda",
+    # LLM Insights
+    "generate_llm_metric_insights",
+    "generate_llm_eda_insights",
+    "generate_llm_recommendations",
 ]

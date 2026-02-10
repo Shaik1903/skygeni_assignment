@@ -17,7 +17,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from data_loader import load_and_prepare_data, get_summary_stats
 from metrics import calculate_all_custom_metrics, identify_key_insights
-from eda import generate_eda_insights
+from eda import generate_eda_insights, run_full_eda
+from llm_insights import generate_llm_recommendations
 
 st.set_page_config(page_title="Recommendations", page_icon="💡", layout="wide")
 
@@ -134,6 +135,15 @@ def generate_recommendations(df: pd.DataFrame, insights: list) -> list:
     
     return recommendations
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def get_cached_recommendations(_df, _metrics, _eda_results):
+    """Generate & cache LLM recommendations."""
+    recs = generate_llm_recommendations(
+        _df, _metrics, _eda_results,
+        fallback_fn=lambda d, _: generate_recommendations(d, [])
+    )
+    return recs if recs else generate_recommendations(_df, [])
+
 
 def main():
     st.title("💡 Recommendations")
@@ -141,8 +151,11 @@ def main():
     
     df = load_data()
     stats = get_summary_stats(df)
-    insights = generate_eda_insights(df)
-    recommendations = generate_recommendations(df, insights)
+    metrics = calculate_all_custom_metrics(df)
+    eda_results = run_full_eda(df)
+    
+    with st.spinner("🤖 Generating AI-powered recommendations..."):
+        recommendations = get_cached_recommendations(df, metrics, eda_results)
     
     # =====================
     # SUMMARY METRICS

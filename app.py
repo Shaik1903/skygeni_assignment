@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 from data_loader import load_and_prepare_data, get_summary_stats, get_segment_analysis, get_quarterly_trends, get_rep_performance, create_heatmap_data
 from metrics import calculate_all_custom_metrics, get_metric_summary, identify_key_insights
 from eda import run_full_eda, generate_eda_insights
+from llm_insights import generate_llm_metric_insights, generate_llm_eda_insights
 
 # Page configuration
 st.set_page_config(
@@ -124,6 +125,19 @@ def get_all_analytics(_df):
     eda_results = run_full_eda(_df)
     quarterly = get_quarterly_trends(_df)
     return stats, metrics, eda_results, quarterly
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def get_llm_metric_insights(_df, _metrics):
+    """Generate and cache LLM metric insights."""
+    return generate_llm_metric_insights(_df, _metrics)
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def get_llm_eda_insights(_df, _eda_results):
+    """Generate and cache LLM EDA insights."""
+    fallback = _eda_results.get('insights', [])
+    return generate_llm_eda_insights(_df, _eda_results, fallback)
 
 
 def create_kpi_card(value, label, change=None, prefix="", suffix=""):
@@ -467,22 +481,23 @@ def main():
     st.divider()
     
     # =====================
-    # INSIGHTS SECTION
+    # INSIGHTS SECTION (LLM-powered with fallback)
     # =====================
     col1, col2 = st.columns([3, 2])
     
     with col1:
-        st.markdown("### 💡 Key Insights (from Custom Metrics)")
+        st.markdown("### 🤖 Key Insights (AI-Generated)")
         
-        # Use insights from NEW custom metrics
-        metric_insights = identify_key_insights(filtered_df, metrics)
+        with st.spinner("Generating AI insights..."):
+            metric_insights = get_llm_metric_insights(filtered_df, metrics)
         for insight in metric_insights[:5]:
             st.markdown(create_insight_card(insight), unsafe_allow_html=True)
     
     with col2:
-        st.markdown("### 📊 EDA Findings")
+        st.markdown("### 📊 EDA Findings (AI-Generated)")
         
-        eda_insights = eda_results['insights']
+        with st.spinner("Analyzing patterns..."):
+            eda_insights = get_llm_eda_insights(filtered_df, eda_results)
         for insight in eda_insights[:4]:
             st.markdown(create_insight_card(insight), unsafe_allow_html=True)
     
