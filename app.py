@@ -290,7 +290,7 @@ def main():
         )
         fig.add_hline(y=stats['overall_win_rate'], line_dash="dash", line_color="gray",
                       annotation_text=f"Average: {stats['overall_win_rate']:.1f}%")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     with col2:
         st.markdown("#### 💰 Revenue by Quarter")
@@ -310,7 +310,7 @@ def main():
             height=300,
             margin=dict(l=20, r=20, t=20, b=20)
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     # =====================
     # HEATMAP
@@ -333,7 +333,7 @@ def main():
         height=350,
         margin=dict(l=20, r=20, t=20, b=20)
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
     
     # =====================
     # CHARTS ROW 2
@@ -358,7 +358,7 @@ def main():
             margin=dict(l=20, r=20, t=20, b=20)
         )
         fig.update_traces(textposition='inside', textinfo='percent+label')
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     with col2:
         st.markdown("#### 👥 Top Sales Reps")
@@ -382,7 +382,7 @@ def main():
             yaxis={'categoryorder': 'total ascending'},
             showlegend=False
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     # =====================
     # CHARTS ROW 3
@@ -408,7 +408,7 @@ def main():
             height=300,
             margin=dict(l=20, r=20, t=20, b=20)
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     with col2:
         st.markdown("#### ⏱️ Sales Cycle by Outcome")
@@ -429,7 +429,7 @@ def main():
             margin=dict(l=20, r=20, t=20, b=20),
             showlegend=False
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     st.divider()
     

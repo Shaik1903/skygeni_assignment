@@ -22,6 +22,7 @@ from metrics import (
     calculate_pipeline_qualification_score,
     calculate_win_rate_elasticity
 )
+from forecasting import get_forecast_pipeline_cached
 
 st.set_page_config(page_title="Win Rate Drivers", page_icon="🎯", layout="wide")
 
@@ -64,85 +65,61 @@ def main():
     st.divider()
     
     # =====================
-    # FEATURE IMPORTANCE (Simulated SHAP-like)
+    # FEATURE IMPORTANCE (Real SHAP)
     # =====================
-    st.markdown("### 📊 Feature Impact on Win Rate")
+    st.markdown("### 🔑 What Actually Drives Wins? (AI Analysis)")
+    st.caption("Based on XGBoost model analysis of 5,000 deals")
     
-    # Calculate relative importance based on win rate variance by segment
-    features = []
-    
-    for segment in ["region", "industry", "product_type", "lead_source"]:
-        seg_stats = df.groupby(segment)["is_won"].mean() * 100
-        variance = seg_stats.var()
-        impact_range = seg_stats.max() - seg_stats.min()
-        features.append({
-            "feature": segment.replace("_", " ").title(),
-            "variance": variance,
-            "impact_range": impact_range,
-            "best": seg_stats.idxmax(),
-            "best_rate": seg_stats.max(),
-            "worst": seg_stats.idxmin(),
-            "worst_rate": seg_stats.min()
-        })
-    
-    # Add sales cycle impact
-    cycle_bins = pd.cut(df["sales_cycle_days"], bins=[0, 30, 60, 90, 120, 300])
-    cycle_rates = df.groupby(cycle_bins, observed=True)["is_won"].mean() * 100
-    features.append({
-        "feature": "Sales Cycle Duration",
-        "variance": cycle_rates.var(),
-        "impact_range": cycle_rates.max() - cycle_rates.min(),
-        "best": "Short (<30d)",
-        "best_rate": cycle_rates.max(),
-        "worst": "Long (>120d)",
-        "worst_rate": cycle_rates.min()
-    })
-    
-    # Add deal size impact
-    size_rates = df.groupby("deal_size_category", observed=True)["is_won"].mean() * 100
-    features.append({
-        "feature": "Deal Size",
-        "variance": size_rates.var(),
-        "impact_range": size_rates.max() - size_rates.min(),
-        "best": str(size_rates.idxmax()),
-        "best_rate": size_rates.max(),
-        "worst": str(size_rates.idxmin()),
-        "worst_rate": size_rates.min()
-    })
-    
-    features_df = pd.DataFrame(features).sort_values("impact_range", ascending=True)
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        # Feature importance bar chart
-        fig = px.bar(
-            features_df,
-            x="impact_range",
-            y="feature",
-            orientation='h',
-            labels={"impact_range": "Win Rate Range (pp)", "feature": "Factor"},
-            color="impact_range",
-            color_continuous_scale="RdYlGn"
-        )
-        fig.update_layout(
-            template='plotly_dark',
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            height=400,
-            showlegend=False
-        )
-        st.plotly_chart(fig, use_container_width=True)
-    
-    with col2:
-        st.markdown("#### Key Findings")
-        for _, row in features_df.iloc[::-1].iterrows():
-            direction = "🟢" if row["impact_range"] > 10 else "🟡"
-            st.markdown(f"""
-            **{direction} {row['feature']}**  
-            Best: {row['best']} ({row['best_rate']:.1f}%)  
-            Worst: {row['worst']} ({row['worst_rate']:.1f}%)
-            """)
+    # Get cached forecast data (includes SHAP)
+    with st.spinner("Analyzing win drivers..."):
+        try:
+            forecast_data = get_forecast_pipeline_cached(df)
+            shap_data = forecast_data["shap_analysis"]
+            
+            col1, col2 = st.columns([2, 1])
+            
+            with col1:
+                # SHAP Bar Chart
+                features = [shap_data["feature_names"][i] for i in shap_data["sorted_idx"]]
+                importance = [shap_data["mean_abs_shap"][i] for i in shap_data["sorted_idx"]]
+                
+                # Top 10 features
+                features = features[:10][::-1]
+                importance = importance[:10][::-1]
+                
+                fig = px.bar(
+                    x=importance,
+                    y=features,
+                    orientation='h',
+                    labels={'x': 'Mean |SHAP| Value (Impact)', 'y': 'Feature'},
+                    color=importance,
+                    color_continuous_scale='Bluered'
+                )
+                fig.update_layout(
+                    title="Top Factors Influencing Win Probability",
+                    height=400,
+                    showlegend=False,
+                    template='plotly_dark',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)',
+                )
+                st.plotly_chart(fig, width='stretch')
+
+            with col2:
+                st.markdown("#### Key Findings")
+                top_factor = features[-1]
+                st.info(f"💡 **Top Driver:**\n\nThe most critical factor driving wins is **{top_factor}**.")
+                
+                st.markdown(f"""
+                **What this means:**
+                The AI model identified {top_factor} as having the strongest influence on whether a deal closes won or lost.
+                
+                **Action:**
+                Drill down into this metric below to understand the directional impact.
+                """)
+        except Exception as e:
+            st.error(f"Could not load AI analysis: {e}")
+            st.info("Falling back to standard metrics below.")
     
     st.divider()
     
@@ -184,7 +161,7 @@ def main():
             showlegend=False,
             title=f"Win Rate by {segment_choice}"
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     with col2:
         # Deal volume by segment
@@ -205,7 +182,7 @@ def main():
             showlegend=False,
             title=f"Deal Volume by {segment_choice}"
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     # =====================
     # SEGMENT MOMENTUM INDEX
@@ -238,7 +215,7 @@ def main():
             showlegend=False,
             title="Segment Momentum (negative = declining)"
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     
     with col2:
         st.markdown("#### Momentum Breakdown")
@@ -286,7 +263,7 @@ def main():
                 showlegend=False,
                 title="DQE by Region (negative = losers take longer than winners)"
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         else:
             st.info("Insufficient data for regional DQE breakdown.")
     

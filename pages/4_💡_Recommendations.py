@@ -269,7 +269,7 @@ def main():
     fig.add_annotation(x=1, y=1, text="Low Priority", showarrow=False, font=dict(size=12, color='#718096'))
     fig.add_annotation(x=3, y=1, text="Reconsider", showarrow=False, font=dict(size=12, color='#718096'))
     
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
     
     st.divider()
     

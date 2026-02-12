@@ -177,8 +177,12 @@ RULES:
 
 def _parse_insights_json(llm_text: str) -> List[Dict]:
     """Parse LLM JSON output into insight dicts. Handles markdown code fences."""
+    # Handle list output (common with some LangChain/Gemini versions)
+    if isinstance(llm_text, list):
+        llm_text = "".join([str(item) for item in llm_text])
+    
     # Strip markdown code fences if present
-    text = llm_text.strip()
+    text = str(llm_text).strip()
     if text.startswith("```"):
         # Remove opening fence (```json or ```)
         first_newline = text.index("\n")
@@ -375,7 +379,11 @@ lead source optimization, rep coaching, and process improvements.
 
 def _parse_recommendations_json(llm_text: str) -> List[Dict]:
     """Parse LLM JSON output into recommendation dicts."""
-    text = llm_text.strip()
+    # Handle list output (common with some LangChain/Gemini versions)
+    if isinstance(llm_text, list):
+        llm_text = "".join([str(item) for item in llm_text])
+
+    text = str(llm_text).strip()
     if text.startswith("```"):
         first_newline = text.index("\n")
         text = text[first_newline + 1:]

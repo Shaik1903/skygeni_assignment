@@ -266,7 +266,7 @@ def main():
         hovermode='x unified'
     )
     
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
     
     st.divider()
     
@@ -301,7 +301,7 @@ def main():
                     height=300,
                     showlegend=False
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
             else:
                 st.info(f"No significant {seg_type} deviations detected")
     
