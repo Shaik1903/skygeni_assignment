@@ -175,42 +175,89 @@ RULES:
 """
 
 
-def _parse_insights_json(llm_text: str) -> List[Dict]:
-    """Parse LLM JSON output into insight dicts. Handles markdown code fences."""
-    # Handle list output (common with some LangChain/Gemini versions)
-    if isinstance(llm_text, list):
-        llm_text = "".join([str(item) for item in llm_text])
-    
-    # Strip markdown code fences if present
-    text = str(llm_text).strip()
-    if text.startswith("```"):
-        # Remove opening fence (```json or ```)
-        first_newline = text.index("\n")
-        text = text[first_newline + 1:]
-    if text.endswith("```"):
-        text = text[:-3]
-    text = text.strip()
+import re
+import ast
 
-    items = json.loads(text)
+def _extract_json_from_text(text: str) -> List[Dict]:
+    """
+    Robustly extract JSON array from text, handling markdown, 
+    single quotes, and surrounding text.
+    """
+    if isinstance(text, list):
+        text = "".join([str(item) for item in text])
+    text = str(text)
+
+    # 1. Try to find a JSON array block with regex
+    # Looks for [ ... ] across multiple lines
+    match = re.search(r'\[.*\]', text, re.DOTALL)
+    if match:
+        json_candidate = match.group(0)
+        try:
+            return json.loads(json_candidate)
+        except json.JSONDecodeError:
+            # If json.loads fails (e.g. single quotes), try ast.literal_eval
+            try:
+                return ast.literal_eval(json_candidate)
+            except (ValueError, SyntaxError):
+                pass
+    
+    # 2. Fallback: Try identifying markdown blocks
+    # (Existing logic as backup, though regex usually catches this)
+    clean_text = text.strip()
+    if clean_text.startswith("```"):
+        try:
+            first_newline = clean_text.index("\n")
+            clean_text = clean_text[first_newline+1:]
+        except ValueError:
+            pass
+    if clean_text.endswith("```"):
+        clean_text = clean_text[:-3]
+    clean_text = clean_text.strip()
+    
+    try:
+        return json.loads(clean_text)
+    except json.JSONDecodeError:
+        pass
+
+    # 3. Last resort: Try ast on the whole cleaned text
+    try:
+        return ast.literal_eval(clean_text)
+    except (ValueError, SyntaxError):
+        pass
+        
+    print(f"[LLM] Failed to parse JSON from response: {text[:100]}...")
+    return []
+
+
+def _parse_insights_json(llm_text: str) -> List[Dict]:
+    """Parse LLM JSON output into insight dicts."""
+    items = _extract_json_from_text(llm_text)
+
     if not isinstance(items, list):
-        items = [items]
+        # Handle case where LLM returns a single object instead of list
+        if isinstance(items, dict):
+            items = [items]
+        else:
+            return []
 
     result = []
     for item in items:
-        result.append({
-            "emoji": item.get("emoji", "💡"),
-            "category": item.get("category", "Insight"),
-            "insight": item.get("insight", ""),
-            "severity": item.get("severity", "medium"),
-            "business_action": item.get("business_action", item.get("action", "")),
-            "estimated_impact": item.get("estimated_impact", ""),
-        })
+        if not isinstance(item, dict):
+            continue
+        try:
+            result.append({
+                "emoji": item.get("emoji", "💡"),
+                "category": item.get("category", "Insight"),
+                "insight": item.get("insight", ""),
+                "severity": item.get("severity", "medium"),
+                "business_action": item.get("business_action", item.get("action", "")),
+                "estimated_impact": item.get("estimated_impact", ""),
+            })
+        except Exception:
+            continue
+            
     return result
 
-
-# ───────────────────────────────────────────────────────────
-# PUBLIC API
-# ───────────────────────────────────────────────────────────
 
 def generate_llm_metric_insights(
     df: pd.DataFrame,
@@ -259,7 +306,7 @@ Focus on:
             return insights
     except Exception as e:
         print(f"[LLM] Metric insights generation failed: {e}")
-        traceback.print_exc()
+        # traceback.print_exc() # Optional: reduce log noise
 
     # Fallback
     if fallback_fn:
@@ -315,7 +362,7 @@ Focus on PATTERNS, TRENDS, and ANOMALIES — things not obvious from the raw num
             return insights
     except Exception as e:
         print(f"[LLM] EDA insights generation failed: {e}")
-        traceback.print_exc()
+        # traceback.print_exc()
 
     return fallback_insights or eda_results.get("insights", [])
 
@@ -370,7 +417,7 @@ lead source optimization, rep coaching, and process improvements.
             return recs
     except Exception as e:
         print(f"[LLM] Recommendations generation failed: {e}")
-        traceback.print_exc()
+        # traceback.print_exc()
 
     if fallback_fn:
         return fallback_fn(df, [])
@@ -379,32 +426,30 @@ lead source optimization, rep coaching, and process improvements.
 
 def _parse_recommendations_json(llm_text: str) -> List[Dict]:
     """Parse LLM JSON output into recommendation dicts."""
-    # Handle list output (common with some LangChain/Gemini versions)
-    if isinstance(llm_text, list):
-        llm_text = "".join([str(item) for item in llm_text])
+    items = _extract_json_from_text(llm_text)
 
-    text = str(llm_text).strip()
-    if text.startswith("```"):
-        first_newline = text.index("\n")
-        text = text[first_newline + 1:]
-    if text.endswith("```"):
-        text = text[:-3]
-    text = text.strip()
-
-    items = json.loads(text)
     if not isinstance(items, list):
-        items = [items]
+        if isinstance(items, dict):
+            items = [items]
+        else:
+            return []
 
     result = []
     for item in items:
-        result.append({
-            "priority": item.get("priority", "MEDIUM"),
-            "category": item.get("category", "General"),
-            "action": item.get("action", ""),
-            "rationale": item.get("rationale", ""),
-            "expected_impact": item.get("expected_impact", ""),
-            "effort": item.get("effort", "Medium"),
-            "timeline": item.get("timeline", "2-4 weeks"),
-            "icon": item.get("icon", "💡"),
-        })
+        if not isinstance(item, dict):
+            continue
+        try:
+            result.append({
+                "priority": item.get("priority", "MEDIUM"),
+                "category": item.get("category", "General"),
+                "action": item.get("action", ""),
+                "rationale": item.get("rationale", ""),
+                "expected_impact": item.get("expected_impact", ""),
+                "effort": item.get("effort", "Medium"),
+                "timeline": item.get("timeline", "2-4 weeks"),
+                "icon": item.get("icon", "💡"),
+            })
+        except Exception:
+            continue
+            
     return result
