@@ -30,113 +30,124 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 def prepare_weekly_series(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Aggregate deal-level data into weekly revenue time series.
-    
-    Returns DataFrame with columns:
-        week_start, revenue_won, deals_won, deals_lost, deals_total,
-        win_rate, avg_deal_size, avg_cycle_won, avg_cycle_lost,
-        deals_created, pipeline_value_created
+    Aggregate deal-level data into weekly revenue time series using resampling.
     """
     df = df.copy()
-    df["closed_week"] = df["closed_date"].dt.to_period("W").apply(lambda r: r.start_time)
-    df["created_week"] = df["created_date"].dt.to_period("W").apply(lambda r: r.start_time)
+    
+    # Ensure datetime index
+    if "closed_date" not in df.columns:
+        return pd.DataFrame()
 
-    # Won revenue per week
-    won = df[df["is_won"] == 1].groupby("closed_week").agg(
-        revenue_won=("deal_amount", "sum"),
-        deals_won=("deal_id", "count"),
-        avg_deal_size=("deal_amount", "mean"),
-        avg_cycle_won=("sales_cycle_days", "mean"),
-    ).reset_index()
-
-    lost = df[df["is_won"] == 0].groupby("closed_week").agg(
-        deals_lost=("deal_id", "count"),
-        avg_cycle_lost=("sales_cycle_days", "mean"),
-    ).reset_index()
-
-    total = df.groupby("closed_week").agg(
+    # Create helper columns for aggregation
+    df["revenue_won"] = np.where(df["is_won"] == 1, df["deal_amount"], 0)
+    df["is_lost"] = (df["is_won"] == 0).astype(int)
+    
+    # Resample on closed_date (W-MON)
+    weekly = df.set_index("closed_date").resample("W-MON").agg(
+        revenue_won=("revenue_won", "sum"),
+        deals_won=("is_won", "sum"),
         deals_total=("deal_id", "count"),
-    ).reset_index()
+    ).reset_index().rename(columns={"closed_date": "week_start"})
 
-    # Pipeline created per week (leading indicator)
-    created = df.groupby("created_week").agg(
+    # Calculating averages for won deals requires a separate group or masking
+    # We can do this safely by filtering first
+    won_stats = df[df["is_won"] == 1].set_index("closed_date").resample("W-MON").agg(
+        avg_deal_size=("deal_amount", "mean"),
+        avg_cycle_won=("sales_cycle_days", "mean")
+    ).reset_index().rename(columns={"closed_date": "week_start"})
+    
+    weekly = pd.merge(weekly, won_stats, on="week_start", how="left")
+
+    # Pipeline created (leading indicator)
+    created = df.set_index("created_date").resample("W-MON").agg(
         deals_created=("deal_id", "count"),
         pipeline_value_created=("deal_amount", "sum"),
-    ).reset_index().rename(columns={"created_week": "closed_week"})
+    ).reset_index().rename(columns={"created_date": "week_start"})
 
-    # Merge
-    weekly = won.merge(lost, on="closed_week", how="outer") \
-               .merge(total, on="closed_week", how="outer") \
-               .merge(created, on="closed_week", how="outer") \
-               .sort_values("closed_week") \
-               .reset_index(drop=True)
+    # Merge and fill
+    weekly = pd.merge(weekly, created, on="week_start", how="outer").fillna(0).sort_values("week_start")
+    
+    # Calculate win rate
+    weekly["win_rate"] = np.where(weekly["deals_total"] > 0, weekly["deals_won"] / weekly["deals_total"], 0)
 
-    weekly = weekly.fillna(0)
-    weekly["win_rate"] = np.where(
-        weekly["deals_total"] > 0,
-        weekly["deals_won"] / weekly["deals_total"],
-        0
-    )
-
-    # Drop first 2 and last 2 weeks (partial)
+    # Trim partial weeks (first/last 2)
     if len(weekly) > 4:
         weekly = weekly.iloc[2:-2].reset_index(drop=True)
 
-    weekly.rename(columns={"closed_week": "week_start"}, inplace=True)
     return weekly
 
 
-def prepare_deal_level(df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str], LabelEncoder]:
+def prepare_deal_level(df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str], List[str], Dict]:
     """
-    Prepare deal-level features for XGBoost classifier.
-    
-    Returns:
-        features_df: DataFrame with encoded features
-        feature_names: list of feature column names
-        label_encoders: dict of LabelEncoders for categorical columns
+    Prepare deal-level features for XGBoost classifier with advanced engineering.
     """
-    df = df.copy()
+    df = df.copy().sort_values("created_date").reset_index(drop=True)
 
-    # Temporal features
+    # 1. Log Transforms (Handle Skew)
+    df["log_amount"] = np.log1p(df["deal_amount"])
+    df["log_cycle"] = np.log1p(df["sales_cycle_days"])
+
+    # 2. Temporal Features
     df["created_month"] = df["created_date"].dt.month
-    df["created_quarter"] = df["created_date"].dt.quarter
-    df["created_month_sin"] = np.sin(2 * np.pi * df["created_month"] / 12)
-    df["created_month_cos"] = np.cos(2 * np.pi * df["created_month"] / 12)
-    df["is_quarter_end"] = df["created_month"].isin([3, 6, 9, 12]).astype(int)
+    df["is_quarter_end"] = df["created_date"].dt.month.isin([3, 6, 9, 12]).astype(int)
 
-    # Rep trailing win rate (up to that point in time — no leakage)
-    df = df.sort_values("created_date").reset_index(drop=True)
-    df["rep_win_rate_trailing"] = (
-        df.groupby("sales_rep_id")["is_won"]
-        .transform(lambda s: s.expanding().mean().shift(1))
-    )
-    df["rep_win_rate_trailing"] = df["rep_win_rate_trailing"].fillna(0.5)  # prior
+    # 3. Target Encoding (Expanding Mean to prevent leakage)
+    # Global default win rate for fillna
+    global_mean = df["is_won"].mean()
 
-    # Label encode categoricals
-    cat_cols = ["region", "industry", "product_type", "lead_source"]
+    def expanding_mean(x):
+        return x.expanding().mean().shift(1)
+
+    # Rep Win Rate
+    df["rep_win_rate"] = df.groupby("sales_rep_id")["is_won"].transform(expanding_mean).fillna(global_mean)
+    
+    # Industry Win Rate
+    df["industry_win_rate"] = df.groupby("industry")["is_won"].transform(expanding_mean).fillna(global_mean)
+
+    # 4. Interaction / Relative Features
+    # Compare deal size to Industry Average (using cumulative mean to avoid leakage)
+    df["industry_avg_amt"] = df.groupby("industry")["deal_amount"].transform(expanding_mean)
+    df["amt_vs_industry"] = df["deal_amount"] / df["industry_avg_amt"].replace(0, 1)
+    
+    # Compare to Rep Average
+    df["rep_avg_amt"] = df.groupby("sales_rep_id")["deal_amount"].transform(expanding_mean)
+    df["amt_vs_rep"] = df["deal_amount"] / df["rep_avg_amt"].replace(0, 1)
+
+    # Time decay feature (days since dataset start)
+    min_date = df["created_date"].min()
+    df["days_since_start"] = (df["created_date"] - min_date).dt.days
+
+    # Fill NaNs specifically for interaction features
+    # (Global fillna kills categorical columns from data_loader)
+    fill_cols = ["log_amount", "log_cycle", "amt_vs_industry", "amt_vs_rep", "industry_avg_amt", "rep_avg_amt"]
+    df[fill_cols] = df[fill_cols].fillna(0)
+
+    # 5. Categorical Encoding
     label_encoders = {}
+    cat_cols = ["region", "industry", "product_type", "lead_source"]
     for col in cat_cols:
         le = LabelEncoder()
         df[f"{col}_enc"] = le.fit_transform(df[col].astype(str))
         label_encoders[col] = le
 
-    # Feature columns
+    # Feature definitions
     feature_cols = [
-        "deal_amount", "sales_cycle_days",
+        "log_amount", "log_cycle",
+        "amt_vs_industry", "amt_vs_rep",
+        "rep_win_rate", "industry_win_rate",
         "region_enc", "industry_enc", "product_type_enc", "lead_source_enc",
-        "created_month_sin", "created_month_cos", "created_quarter",
-        "is_quarter_end", "rep_win_rate_trailing",
+        "created_month", "is_quarter_end", "days_since_start"
     ]
-
-    # Human-readable names for SHAP
-    feature_display_names = [
-        "Deal Amount ($)", "Sales Cycle (days)",
+    
+    display_names = [
+        "Deal Amount (Log)", "Sales Cycle (Log)",
+        "Amount vs Industry Avg", "Amount vs Rep Avg",
+        "Rep Win Rate", "Industry Win Rate",
         "Region", "Industry", "Product Type", "Lead Source",
-        "Month (sin)", "Month (cos)", "Quarter",
-        "Quarter-End Deal", "Rep Historical Win Rate",
+        "Month", "Quarter End", "Time Trend"
     ]
 
-    return df, feature_cols, feature_display_names, label_encoders
+    return df, feature_cols, display_names, label_encoders
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -144,126 +155,81 @@ def prepare_deal_level(df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str], Label
 # ═══════════════════════════════════════════════════════════════
 
 def engineer_weekly_features(weekly: pd.DataFrame) -> pd.DataFrame:
-    """Add temporal, lag, rolling, and custom metric features to weekly series."""
+    """Add temporal, lag, and rolling features to weekly series."""
     df = weekly.copy()
-
+    
     # Temporal
-    df["week_of_year"] = df["week_start"].dt.isocalendar().week.astype(int)
     df["month"] = df["week_start"].dt.month
-    df["quarter"] = df["week_start"].dt.quarter
-    df["month_sin"] = np.sin(2 * np.pi * df["month"] / 12)
-    df["month_cos"] = np.cos(2 * np.pi * df["month"] / 12)
     df["is_quarter_end"] = df["month"].isin([3, 6, 9, 12]).astype(int)
     df["time_index"] = np.arange(len(df))
 
-    # Lag features
+    # Lags & Rolling
     for lag in [1, 2, 4]:
         df[f"revenue_lag_{lag}"] = df["revenue_won"].shift(lag)
-        df[f"win_rate_lag_{lag}"] = df["win_rate"].shift(lag)
-
-    # Rolling features
+        
     df["revenue_ma_4"] = df["revenue_won"].rolling(4, min_periods=2).mean()
     df["revenue_ma_8"] = df["revenue_won"].rolling(8, min_periods=4).mean()
-    df["revenue_std_4"] = df["revenue_won"].rolling(4, min_periods=2).std()
-
-    # Leading indicator lags
-    df["pipeline_created_lag1"] = df["deals_created"].shift(1)
-    df["pipeline_value_lag1"] = df["pipeline_value_created"].shift(1)
-
-    # Custom Metric 1: Sales Velocity Coefficient
-    df["svc"] = np.where(
-        df["avg_cycle_won"] > 0,
-        (df["deals_won"] * df["avg_deal_size"]) / df["avg_cycle_won"],
-        0
-    )
-
-    # Custom Metric 2: Pipeline Conversion Momentum
-    df["pcm"] = (df["win_rate"] - df["win_rate"].shift(4)) * df["deals_created"]
-
-    # Custom Metric 3: Deal Quality Drift
-    overall_avg = df["avg_deal_size"].mean()
-    df["dqd"] = np.where(
-        overall_avg > 0,
-        df["avg_deal_size"] / overall_avg - 1,
-        0
-    )
+    
+    # Leading Indicators (Pipeline)
+    df["pipeline_created_lag1"] = df["pipeline_value_created"].shift(1)
+    df["deals_created_lag1"] = df["deals_created"].shift(1)
 
     return df
 
 
-# ═══════════════════════════════════════════════════════════════
-# 3. MODEL 2: DEAL-LEVEL WIN/LOSS CLASSIFIER (shared)
-# ═══════════════════════════════════════════════════════════════
-
-def train_win_loss_model(
-    df: pd.DataFrame,
-    feature_cols: List[str],
-) -> Tuple[xgb.XGBClassifier, Dict]:
+def train_win_loss_model(df: pd.DataFrame, feature_cols: List[str]) -> Tuple[xgb.XGBClassifier, Dict]:
     """
-    Train XGBoost classifier for win/loss prediction.
-    Uses 5-fold stratified CV for validation.
-    
-    Returns:
-        model: trained XGBClassifier
-        results: dict with metrics, feature importance, CV scores
+    Train XGBoost classifier for win/loss prediction with 5-fold CV.
     """
     X = df[feature_cols].values
     y = df["is_won"].values
 
-    # Stratified 5-fold CV
+    # Calculate scale_pos_weight
+    # typically sum(negative) / sum(positive)
+    pos_count = np.sum(y)
+    neg_count = len(y) - pos_count
+    scale_weight = neg_count / pos_count if pos_count > 0 else 1.0
+
+    # CV
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    cv_scores = {"auc": [], "f1": []}
-
-    for train_idx, val_idx in cv.split(X, y):
-        X_train, X_val = X[train_idx], X[val_idx]
-        y_train, y_val = y[train_idx], y[val_idx]
-
-        model = xgb.XGBClassifier(
-            n_estimators=150,
-            max_depth=5,
-            learning_rate=0.05,
-            min_child_weight=3,
-            subsample=0.8,
-            colsample_bytree=0.8,
-            random_state=42,
-            eval_metric="logloss",
-            verbosity=0,
-        )
-        model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
-
-        y_pred_proba = model.predict_proba(X_val)[:, 1]
-        y_pred = model.predict(X_val)
-
-        cv_scores["auc"].append(roc_auc_score(y_val, y_pred_proba))
-        cv_scores["f1"].append(f1_score(y_val, y_pred))
-
-    # Train final model on all data
-    final_model = xgb.XGBClassifier(
-        n_estimators=150,
-        max_depth=5,
-        learning_rate=0.05,
-        min_child_weight=3,
-        subsample=0.8,
-        colsample_bytree=0.8,
-        random_state=42,
-        eval_metric="logloss",
-        verbosity=0,
-    )
-    final_model.fit(X, y, verbose=False)
-
-    # Feature importance (gain-based)
-    importance = final_model.feature_importances_
-
-    results = {
-        "cv_auc_mean": np.mean(cv_scores["auc"]),
-        "cv_auc_std": np.std(cv_scores["auc"]),
-        "cv_f1_mean": np.mean(cv_scores["f1"]),
-        "cv_f1_std": np.std(cv_scores["f1"]),
-        "feature_importance": importance,
-        "cv_scores": cv_scores,
+    scores = {"auc": [], "f1": []}
+    
+    # Tuned XGB params
+    params = {
+        "n_estimators": 200, 
+        "max_depth": 6, 
+        "learning_rate": 0.03,
+        "min_child_weight": 5,
+        "gamma": 0.1,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "scale_pos_weight": scale_weight,
+        "eval_metric": "logloss", 
+        "use_label_encoder": False, 
+        "verbosity": 0
     }
 
-    return final_model, results
+    for train_idx, val_idx in cv.split(X, y):
+        model = xgb.XGBClassifier(**params)
+        model.fit(X[train_idx], y[train_idx], eval_set=[(X[val_idx], y[val_idx])], verbose=False)
+        
+        y_pred = model.predict(X[val_idx])
+        y_proba = model.predict_proba(X[val_idx])[:, 1]
+        
+        scores["auc"].append(roc_auc_score(y[val_idx], y_proba))
+        scores["f1"].append(f1_score(y[val_idx], y_pred))
+
+    # Final Model
+    final_model = xgb.XGBClassifier(**params)
+    final_model.fit(X, y, verbose=False)
+
+    return final_model, {
+        "cv_auc_mean": np.mean(scores["auc"]),
+        "cv_auc_std": np.std(scores["auc"]),
+        "cv_f1_mean": np.mean(scores["f1"]),
+        "cv_f1_std": np.std(scores["f1"]),
+        "feature_importance": final_model.feature_importances_,
+    }
 
 
 def compute_shap_values(
@@ -298,13 +264,11 @@ def compute_shap_values(
             "X": X,
         }
     except ImportError:
-        print("[Forecast] shap not installed, using feature_importances_ instead")
         return {
-            "shap_values": None,
-            "mean_abs_shap": model.feature_importances_,
-            "sorted_idx": np.argsort(model.feature_importances_)[::-1],
+            "shap_values": None, 
+            "mean_abs_shap": model.feature_importances_, 
             "feature_names": feature_names,
-            "X": X,
+            "sorted_idx": np.argsort(model.feature_importances_)[::-1]
         }
 
 
@@ -313,12 +277,10 @@ def compute_shap_values(
 # ═══════════════════════════════════════════════════════════════
 
 WEEKLY_FEATURE_COLS = [
-    "time_index", "month_sin", "month_cos", "is_quarter_end",
+    "time_index", "month", "is_quarter_end",
     "revenue_lag_1", "revenue_lag_2", "revenue_lag_4",
-    "revenue_ma_4", "revenue_ma_8", "revenue_std_4",
-    "win_rate", "avg_deal_size", "deals_won", "deals_created",
-    "pipeline_created_lag1", "pipeline_value_lag1",
-    "svc", "pcm", "dqd",
+    "revenue_ma_4", "revenue_ma_8",
+    "pipeline_created_lag1", "deals_created_lag1",
 ]
 
 
@@ -346,32 +308,20 @@ def _train_prophet(weekly_df: pd.DataFrame, periods: int = 12):
     """Train Prophet model on weekly revenue data."""
     try:
         from prophet import Prophet
-
-        # Prophet needs 'ds' and 'y' columns
-        prophet_df = weekly_df[["week_start", "revenue_won"]].copy()
-        prophet_df.columns = ["ds", "y"]
-
-        model = Prophet(
-            changepoint_prior_scale=0.05,
-            seasonality_prior_scale=1.0,
-            seasonality_mode="multiplicative",
-            weekly_seasonality=False,
-            daily_seasonality=False,
-            yearly_seasonality=True,
-        )
-        model.add_seasonality(name="quarterly", period=13, fourier_order=3)
-
+        import logging
+        logging.getLogger('cmdstanpy').setLevel(logging.WARNING)
+        
+        df = weekly_df[["week_start", "revenue_won"]].rename(columns={"week_start": "ds", "revenue_won": "y"})
+        model = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
+        model.add_seasonality(name="quarterly", period=90, fourier_order=3)
+        
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            model.fit(prophet_df)
-
-        # Forecast
+            model.fit(df)
+            
         future = model.make_future_dataframe(periods=periods, freq="W-MON")
-        forecast = model.predict(future)
-
-        return model, forecast
-    except ImportError:
-        print("[Forecast] Prophet not installed, skipping Prophet model.")
+        return model, model.predict(future)
+    except Exception:
         return None, None
 
 
@@ -455,24 +405,21 @@ def generate_forecast(weekly_df: pd.DataFrame, feature_cols: List[str],
     y = df["revenue_won"].values
     xgb_model = _train_xgb_regressor(X, y)
 
-    # XGB forecast: project features forward
-    # Use last known values + trend for lag features
-    last_row = df[feature_cols].iloc[-1:].copy()
+    # XGB forecast: Rolling prediction with lag updates
+    last_row = df.iloc[-1:].copy()
     xgb_forecasts = []
 
-    for i in range(forecast_weeks):
-        pred = xgb_model.predict(last_row.values)[0]
-        xgb_forecasts.append(max(0, pred))
+    for _ in range(forecast_weeks):
+        # Predict
+        pred = max(0, float(xgb_model.predict(last_row[feature_cols].values)[0]))
+        xgb_forecasts.append(pred)
 
-        # Shift lags forward (approximate)
-        new_row = last_row.copy()
-        if "revenue_lag_1" in feature_cols:
-            col_idx = feature_cols.index("revenue_lag_1")
-            new_row.iloc[0, col_idx] = pred
-        if "time_index" in feature_cols:
-            col_idx = feature_cols.index("time_index")
-            new_row.iloc[0, col_idx] += 1
-        last_row = new_row
+        # Update lags for next step
+        last_row["revenue_lag_4"] = last_row["revenue_lag_2"].values
+        last_row["revenue_lag_2"] = last_row["revenue_lag_1"].values
+        last_row["revenue_lag_1"] = pred
+        last_row["time_index"] += 1
+
 
     # --- Prophet ---
     prophet_model, prophet_forecast = _train_prophet(weekly_df, periods=forecast_weeks)
