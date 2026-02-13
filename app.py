@@ -47,17 +47,26 @@ st.markdown("""
         text-align: center;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
         border: 1px solid rgba(255, 255, 255, 0.1);
+        min-height: 160px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 8px;
+    }
+    
+    .kpi-card p {
+        margin: 0;
     }
     
     .kpi-value {
-        font-size: 2.5rem;
+        font-size: 2.2rem;
         font-weight: 700;
         color: #ffffff;
         margin: 0;
     }
     
     .kpi-label {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         color: #a0aec0;
         text-transform: uppercase;
         letter-spacing: 1px;
@@ -144,11 +153,13 @@ def get_llm_eda_insights(_df, _eda_results):
 
 def create_kpi_card(value, label, change=None, prefix="", suffix=""):
     """Create a styled KPI card."""
-    change_html = ""
     if change is not None:
         change_class = "kpi-change-positive" if change >= 0 else "kpi-change-negative"
         change_symbol = "↑" if change >= 0 else "↓"
         change_html = f'<p class="{change_class}">{change_symbol} {abs(change):.1f}%</p>'
+    else:
+        # Placeholder to keep card height consistent
+        change_html = '<p class="kpi-change-positive" style="visibility: hidden;">&nbsp;</p>'
     
     return f"""
     <div class="kpi-card">

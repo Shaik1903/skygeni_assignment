@@ -13,6 +13,11 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import warnings
+import os
+
+# Suppress TensorFlow and oneDNN logs
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 from typing import Dict, List, Tuple, Optional
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import LabelEncoder
@@ -91,18 +96,10 @@ def prepare_deal_level(df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str], List[
     df["created_month"] = df["created_date"].dt.month
     df["is_quarter_end"] = df["created_date"].dt.month.isin([3, 6, 9, 12]).astype(int)
 
-    # 3. Target Encoding (Expanding Mean to prevent leakage)
-    # Global default win rate for fillna
-    global_mean = df["is_won"].mean()
-
+    # 3. Reference Metrics (Expanding Mean to prevent leakage)
+    # used only for relative calculations below
     def expanding_mean(x):
         return x.expanding().mean().shift(1)
-
-    # Rep Win Rate
-    df["rep_win_rate"] = df.groupby("sales_rep_id")["is_won"].transform(expanding_mean).fillna(global_mean)
-    
-    # Industry Win Rate
-    df["industry_win_rate"] = df.groupby("industry")["is_won"].transform(expanding_mean).fillna(global_mean)
 
     # 4. Interaction / Relative Features
     # Compare deal size to Industry Average (using cumulative mean to avoid leakage)
@@ -134,7 +131,6 @@ def prepare_deal_level(df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str], List[
     feature_cols = [
         "log_amount", "log_cycle",
         "amt_vs_industry", "amt_vs_rep",
-        "rep_win_rate", "industry_win_rate",
         "region_enc", "industry_enc", "product_type_enc", "lead_source_enc",
         "created_month", "is_quarter_end", "days_since_start"
     ]
@@ -142,7 +138,6 @@ def prepare_deal_level(df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str], List[
     display_names = [
         "Deal Amount (Log)", "Sales Cycle (Log)",
         "Amount vs Industry Avg", "Amount vs Rep Avg",
-        "Rep Win Rate", "Industry Win Rate",
         "Region", "Industry", "Product Type", "Lead Source",
         "Month", "Quarter End", "Time Trend"
     ]
@@ -521,10 +516,27 @@ def run_forecast_pipeline(df: pd.DataFrame, forecast_weeks: int = 12) -> Dict:
     }
 
 
-@st.cache_resource(ttl=3600, show_spinner=False)
+@st.cache_resource(show_spinner=False)
 def get_forecast_pipeline_cached(df: pd.DataFrame, forecast_weeks: int = 12) -> Dict:
-    """Cached wrapper for full forecast pipeline."""
-    return run_forecast_pipeline(df, forecast_weeks)
+    """
+    Cached wrapper for full forecast pipeline.
+    Uses a stable cache key based on dataframe shape and date range to prevent 
+    redundant training when navigating between pages.
+    """
+    # Create a stable key from the dataframe's metadata
+    # This prevents re-training if the DF object address changes but content is the same
+    cache_key = f"{len(df)}_{df['created_date'].min()}_{df['created_date'].max()}_{forecast_weeks}"
+    
+    # We use session state as a secondary cache for faster page transitions
+    if "forecast_cache" not in st.session_state:
+        st.session_state.forecast_cache = {}
+        
+    if cache_key in st.session_state.forecast_cache:
+        return st.session_state.forecast_cache[cache_key]
+        
+    results = run_forecast_pipeline(df, forecast_weeks)
+    st.session_state.forecast_cache[cache_key] = results
+    return results
 
 
 # ═══════════════════════════════════════════════════════════════
