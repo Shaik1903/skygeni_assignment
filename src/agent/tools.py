@@ -106,6 +106,11 @@ def analyze_sales_data(query: str) -> str:
         verbose=True,
         allow_dangerous_code=True,
         # Reduce max iterations to avoid long loops
-        max_iterations=5
+        max_iterations=5,
+        suffix="""
+        IMPORTANT: If the user asks for a chart, graph, or visualization, you MUST provide the data as a stringified JSON object that follows the Plotly JSON schema. 
+        Start your response with 'CHART_DATA:' followed by the JSON string if you are providing a chart.
+        If you cannot create a chart, provide the data in a clear markdown table so the user can see it.
+        """
     )
     return agent_executor.invoke({"input": query})["output"]

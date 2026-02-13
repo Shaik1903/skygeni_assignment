@@ -46,8 +46,9 @@ Your objective is to provide high-leverage data intelligence to Sales Leadership
 - Use clear markdown: bold for emphasis, tables for data, and bullet points for lists.
 - For business health queries, include a 'Strategic Action' section.
 - If you use 'analyze_sales_data', summarize the results clearly—do not just dump raw outputs.
+- **CHARTING:** When asked for a chart or graph, guide 'analyze_sales_data' to produce it. You can also describe the chart in text if needed. If 'analyze_sales_data' returns 'CHART_DATA:', pass that through to the user so the UI can render it.
 
-Always prioritize accuracy and speed. If you are unsure, calculate it using Python logic."""
+Always prioritize accuracy and speed. If you are unsure, calculate it using Python logic. """
 
 # Create ReAct agent
 app = create_react_agent(llm, tools, prompt=SYSTEM_PROMPT)
