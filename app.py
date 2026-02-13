@@ -342,9 +342,7 @@ def main():
         
         # Data info
         st.markdown("### 📊 Data Overview")
-        st.metric("Total Deals", f"{validation_report['total_rows']:,}")
-        st.metric("Date Range", f"{validation_report['date_range']['created_min'][:10]} to {validation_report['date_range']['closed_max'][:10]}")
-        
+        st.metric("Total Deals", f"{validation_report['total_rows']:,}")        
         st.divider()
         
         # Quick filters
@@ -641,7 +639,7 @@ def main():
         col1, col2 = st.columns([3, 2])
         
         with col1:
-            st.markdown("### 🤖 Key Insights (AI-Generated)")
+            st.markdown("### 🤖 Key Insights")
             
             with st.spinner("Generating AI insights..."):
                 metric_insights = get_llm_metric_insights(filtered_df, metrics)
@@ -649,7 +647,7 @@ def main():
                 st.markdown(create_insight_card(insight), unsafe_allow_html=True)
         
         with col2:
-            st.markdown("### 📊 EDA Findings (AI-Generated)")
+            st.markdown("### 📊 EDA Findings")
             
             with st.spinner("Analyzing patterns..."):
                 eda_insights = get_llm_eda_insights(filtered_df, eda_results)

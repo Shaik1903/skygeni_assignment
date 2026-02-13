@@ -285,10 +285,12 @@ Based on the metrics above, generate 5–7 HIGH-IMPACT insights for a CRO.
 Return ONLY a JSON array where each item has:
 - "emoji": one relevant emoji
 - "category": short label (e.g. "Pipeline Health", "Deal Sizing", "Segment Shift")
-- "insight": the finding in 1-2 sentences with specific numbers
+- "insight": ONE concise sentence (max 15 words) with specific numbers
 - "severity": "high", "medium", or "low"
-- "business_action": concrete next step the CRO should take
-- "estimated_impact": quantified expected benefit (e.g. "Could save ~2,400 rep-days/quarter")
+- "business_action": ONE concise action (max 12 words)
+- "estimated_impact": brief quantified benefit (max 10 words)
+
+CRITICAL: Keep "insight" and "business_action" ultra-concise. NO multi-sentence explanations.
 
 Focus on:
 1. Pipeline qualification problems (PQS components: DQE + stall detection)
@@ -346,10 +348,12 @@ Based on the exploratory data analysis above, generate 4–5 KEY FINDINGS for a 
 Return ONLY a JSON array where each item has:
 - "emoji": one relevant emoji
 - "category": short label (e.g. "Trend Alert", "Regional Gap", "Lead Quality")
-- "insight": the finding in 1-2 sentences with specific numbers
+- "insight": ONE concise sentence (max 15 words) with specific numbers
 - "severity": "high", "medium", or "low"
-- "business_action": concrete next step
-- "estimated_impact": quantified benefit if possible
+- "business_action": ONE concise action (max 12 words)
+- "estimated_impact": brief quantified benefit (max 10 words)
+
+CRITICAL: Keep "insight" and "business_action" ultra-concise. NO multi-sentence explanations.
 
 Focus on PATTERNS, TRENDS, and ANOMALIES — things not obvious from the raw numbers.
 """

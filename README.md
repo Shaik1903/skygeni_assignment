@@ -20,8 +20,12 @@ venv\Scripts\activate       # Windows
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. (Optional) Set up Gemini API key for AI-powered insights
-#    Create a .env file with: GOOGLE_API_KEY=your_key_here
+# 4. Set up Gemini API key for AI-powered insights
+#    Create a .env file in the project root and add:
+echo "GOOGLE_API_KEY=your_actual_api_key_here" > .env
+#    Replace 'your_actual_api_key_here' with your Google AI Studio API key
+#    Get your key from: https://aistudio.google.com/app/apikey
+#    
 #    Without this, the system falls back to rule-based insights automatically.
 
 # 5. Run the application
@@ -29,6 +33,23 @@ streamlit run app.py
 ```
 
 Open your browser at `http://localhost:8501`. The dashboard has 4 pages accessible from the sidebar.
+
+---
+## � For Recruiters: Where to Find Everything
+
+**All 5 parts of the assignment are complete. Here's where to find each deliverable:**
+
+| Part | What to Review | Location |
+|------|---------------|----------|
+| **Part 1: Problem Framing** | Problem definition, metrics design, business context | [`docs/problem_framing.md`](docs/problem_framing.md) |
+| **Part 2: Data Exploration** | EDA, insights, visualizations | [`notebooks/01_EDA_and_Data_Insights.ipynb`](notebooks/01_EDA_and_Data_Insights.ipynb) ⭐ |
+| **Part 3: Decision Engine** | All 4 engines (B, C, D) with code & results | [`notebooks/02_Decision_Engine.ipynb`](notebooks/02_Decision_Engine.ipynb) ⭐ |
+| **Part 4: System Design** | Architecture, data flow, production considerations | [`docs/system_design.md`](docs/system_design.md) |
+| **Part 5: Reflection** | Assumptions, limitations, next steps | [`docs/reflection.md`](docs/reflection.md) |
+
+**⭐ Start here:** The **notebooks** are self-contained with all code, visualizations, and explanations. They can be viewed directly on GitHub or executed locally.
+
+**🚀 Live Demo:** Run `streamlit run app.py` to see the interactive dashboard with all 4 decision engines.
 
 ---
 
@@ -91,9 +112,11 @@ We designed the system to answer questions at four tiers: **Diagnostic** (Why?),
 
 ---
 
-### Part 2 — Data Exploration & Insights ([Full Document](docs/data_exploration.md))
+### Part 2 — Data Exploration & Insights ([Notebook](notebooks/01_EDA_and_Data_Insights.ipynb) | [Summary](docs/data_exploration.md))
 
-The EDA engine (`src/eda.py`) runs **7 automated analysis modules**:
+**Primary deliverable:** [`01_EDA_and_Data_Insights.ipynb`](notebooks/01_EDA_and_Data_Insights.ipynb) — A self-contained notebook with all code, visualizations, and analysis inlined.
+
+The analysis covers **7 automated modules**:
 
 1. **Win Rate Trends** — Quarterly/monthly decomposition with trend direction detection and peak/trough identification
 2. **Segment Performance** — Cross-tabulation across region, industry, product type with relative performance scoring
@@ -115,7 +138,9 @@ The EDA engine (`src/eda.py`) runs **7 automated analysis modules**:
 
 ---
 
-### Part 3 — Decision Engine ([Full Document](docs/decision_engine.md))
+### Part 3 — Decision Engine ([Notebook](notebooks/02_Decision_Engine.ipynb) | [Summary](docs/decision_engine.md))
+
+**Primary deliverable:** [`02_Decision_Engine.ipynb`](notebooks/02_Decision_Engine.ipynb) — A self-contained notebook with complete implementation, training, evaluation, and results for all engines.
 
 **We implemented ALL FOUR options** from the challenge, not just one:
 
