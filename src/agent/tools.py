@@ -1,7 +1,8 @@
 from langchain_core.tools import tool
 from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
 from langchain_google_genai import ChatGoogleGenerativeAI
-from src.agent.loader import get_sales_data
+from src.data_loader import load_and_prepare_data
+from typing import Optional
 import src.metrics as metrics
 import src.forecasting as forecasting
 import src.eda as eda
@@ -11,6 +12,18 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+
+_global_df: Optional[pd.DataFrame] = None
+
+def get_sales_data() -> pd.DataFrame:
+    """
+    Get the sales data, loading it if necessary.
+    Returns a pandas DataFrame (cached in memory).
+    """
+    global _global_df
+    if _global_df is None:
+        _global_df, _ = load_and_prepare_data()
+    return _global_df
 
 @tool
 def get_key_metrics_summary() -> str:
