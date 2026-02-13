@@ -435,9 +435,9 @@ def generate_forecast(weekly_df: pd.DataFrame, feature_cols: List[str],
         forecast_df["prophet_lower"] = prophet_future["yhat_lower"].values
         forecast_df["prophet_upper"] = prophet_future["yhat_upper"].values
 
-        # Ensemble: Prophet 0.4 + XGB 0.6
+        # Ensemble: Prophet 0.5 + XGB 0.5
         forecast_df["ensemble_forecast"] = (
-            0.4 * forecast_df["prophet_forecast"] + 0.6 * forecast_df["xgb_forecast"]
+            0.5 * forecast_df["prophet_forecast"] + 0.5 * forecast_df["xgb_forecast"]
         )
         # Confidence bands from Prophet scaled to ensemble
         scale = forecast_df["ensemble_forecast"] / forecast_df["prophet_forecast"].clip(lower=1)
