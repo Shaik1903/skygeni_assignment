@@ -261,6 +261,13 @@ The flagship feature of this system is **SkyRalph**, a conversational CRM agent 
 ![SkyRalph in action](agent_UI_images/CRM_agent.png)
 
 ---
+## 👤 Contact info
+
+**Sadikh Shaik**
+
+📧 Email: sadikhshaik059@gmail.com
+📱 Phone: +91 8309402827
+---
 
 ## 🛠️ Tech Stack & Key Decisions
 
