@@ -1,13 +1,18 @@
 # Part 3: Decision Engine
 
-> **We implemented ALL FOUR options** from the challenge (B, C, D) plus a bonus conversational AI agent — not just one.
+The primary deliverable for the decision intelligence system is the **[`02_Decision_Engine.ipynb`](../notebooks/02_Decision_Engine.ipynb)** notebook. This notebook contains the complete end-to-end implementation, training, validation, and explainability results for every model.
+
+While the notebook serves as the research and results document, the engines are deployed as high-performance modules in `src/forecasting.py` and interactive views in the `pages/` directory.
+
+> **We implemented ALL FOUR options** from the challenge (B, C, D) plus a bonus conversational AI agent.
 
 ---
 
 ## Engine B: Win Rate Driver Analysis
 
-**Page:** `pages/1_🎯_Win_Rate_Drivers.py`  
-**Module:** `src/forecasting.py` (model training + SHAP) + `src/metrics.py` (WRE, SMI)
+**Primary Walkthrough:** [`02_Decision_Engine.ipynb`](../notebooks/02_Decision_Engine.ipynb) (Section 2.0)  
+**Implementation:** `pages/1_🎯_Win_Rate_Drivers.py`  
+**Core Logic:** `src/forecasting.py` (model training + SHAP)
 
 ### Problem Definition
 
@@ -111,8 +116,8 @@ This produces realistic error estimates because the model only ever predicts *fu
 
 ## Engine D: Pipeline Anomaly Detection
 
-**Page:** `app.py` → Pipeline Alerts tab  
-**Module:** `app.py` (inline functions)
+**Primary Walkthrough:** [`02_Decision_Engine.ipynb`](../notebooks/02_Decision_Engine.ipynb) (Section 4.0)  
+**Implementation:** `app.py` (Pipeline Alerts tab)  
 
 ### Problem Definition
 
@@ -156,7 +161,7 @@ This produces realistic error estimates because the model only ever predicts *fu
 
 ---
 
-## Bonus: SkyRalph — Conversational CRM Agent
+## SkyRalph — Conversational CRM Agent
 
 **Page:** `pages/3_💬_CRM_Agent.py`  
 **Module:** `src/agent/graph.py` + `src/agent/tools.py`
@@ -167,8 +172,8 @@ This produces realistic error estimates because the model only ever predicts *fu
 
 ### Architecture
 
-- **Framework:** LangGraph `create_react_agent` (ReAct pattern: Reason → Act → Observe → Repeat)
-- **LLM:** Gemini 2.5 Flash (temperature=0 for determinism)
+- **Framework:** LangGraph (ReAct pattern: Reason → Act → Observe → Repeat)
+- **LLM:** Gemini 2.5 Flash
 - **4 Agent Tools:**
 
 | Tool | Function | When Agent Uses It |
@@ -177,10 +182,6 @@ This produces realistic error estimates because the model only ever predicts *fu
 | `get_revenue_forecast` | Runs full forecast pipeline | "What's our Q3 projection?" |
 | `explain_win_rate_trends` | Returns EDA insights | "Why are we losing more deals?" |
 | `analyze_sales_data` | Ad-hoc pandas queries via LLM-powered `create_pandas_dataframe_agent` | "How many deals did Rep X close in January?", "Show me a chart of win rate by region" |
-
-### Charting Capability
-
-The `analyze_sales_data` tool can produce Plotly JSON charts. When the tool returns `CHART_DATA:` followed by JSON, the Streamlit UI renders it as an interactive Plotly chart inline in the chat. This means a CRO can type "Show me a bar chart of win rate by region" and see an actual interactive chart, not just text.
 
 ### Example Interactions
 

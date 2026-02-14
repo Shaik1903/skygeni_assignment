@@ -31,13 +31,10 @@ The Segment Momentum Index (SMI) compares recent quarters to historical ones. If
 
 **Fix:** We have minimum sample thresholds in code, but a Bayesian approach (shrinking small segments toward the global mean) would be more statistically sound.
 
-### Problem 3: LLM Output Instability
-The Gemini-powered insights (`llm_insights.py`) return JSON from a generative model. Even with `temperature=0.01`, the output format can vary: sometimes it wraps JSON in markdown code fences, sometimes it returns single objects instead of arrays, sometimes it uses single quotes instead of double quotes.
+### Problem 3: Causal Attribution vs. Correlation
+Our models identify correlation (e.g., "Deals with Product X in Region Y win 20% less"). However, they cannot determine *causality*. The drop could be due to a specific competitor launching a local discount campaign that is not captured in our CRM data.
 
-**What we did:** We built a multi-layer parser (`_extract_json_from_text`) that handles markdown stripping, regex extraction, `ast.literal_eval` fallback, and graceful degradation to rule-based insights. This robustness was hard-won through real debugging.
-
-### Problem 4: Streamlit's Single-Threaded Nature
-Streamlit reruns the entire script on every interaction. With heavy models (Prophet, XGBoost), this could cause 10–20 second load times. We mitigate this with aggressive caching (`@st.cache_data`, `@st.cache_resource`, session state), but in a production setting, pre-computed insights served via an API would be necessary.
+**The consequence:** A sales leader might mistakenly try to fix "Product X" or "Region Y" when the root cause is an external market event. Bridging the gap between statistical correlation and strategic causal attribution is the hardest hurdle for AI in the boardroom.
 
 ---
 

@@ -48,91 +48,66 @@ def extract_message_content(message):
     return str(message.content)
 
 # Display chat messages
-for message in st.session_state.messages:
+# We only want to show:
+# 1. Human messages
+# 2. The FINAL AI message for each turn (skipping intermediate thoughts/tool calls)
+display_messages = []
+for i, msg in enumerate(st.session_state.messages):
+    if isinstance(msg, HumanMessage):
+        display_messages.append(msg)
+    elif isinstance(msg, AIMessage):
+        # If this is the last message OR the next message is a HumanMessage, 
+        # it's the final output of a turn.
+        is_last = (i == len(st.session_state.messages) - 1)
+        next_is_human = (i < len(st.session_state.messages) - 1 and isinstance(st.session_state.messages[i+1], HumanMessage))
+        
+        # Also skip messages that are purely tool calls without content
+        content = extract_message_content(msg)
+        if (is_last or next_is_human) and content.strip():
+            display_messages.append(msg)
+
+for message in display_messages:
     content = extract_message_content(message)
     if isinstance(message, HumanMessage):
         with st.chat_message("user"):
             st.markdown(content)
     elif isinstance(message, AIMessage):
         with st.chat_message("assistant"):
-            if "CHART_DATA:" in content:
-                parts = content.split("CHART_DATA:", 1)
-                if parts[0].strip():
-                    st.markdown(parts[0].strip())
-                try:
-                    import json
-                    import plotly.graph_objects as go
-                    chart_json = json.loads(parts[1].strip())
-                    fig = go.Figure(chart_json)
-                    st.plotly_chart(fig, use_container_width=True)
-                except:
-                    st.code(parts[1].strip())
-            else:
-                st.markdown(content)
+            st.markdown(content)
 
 # Chat input
 if prompt := st.chat_input("Ask me about your sales pipeline..."):
     # Append user message
     st.session_state.messages.append(HumanMessage(content=prompt))
-    # Rerun to show user message immediately through the main loop
-    st.rerun()
+    
+    # Show the user message immediately
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
-# If the last message is from the user, generate a response
-if st.session_state.messages and isinstance(st.session_state.messages[-1], HumanMessage):
-    with st.chat_message("assistant"):
-        with st.spinner("Analyzing pipeline data..."):
-            config = {"configurable": {"thread_id": st.session_state.thread_id}}
-            
-            # Run the graph
-            # Note: LangGraph ReAct agent returns the full history including tool calls
+    # Generate the response RIGHT HERE, before any rerun
+    config = {"configurable": {"thread_id": st.session_state.thread_id}}
+    
+    with st.status("SkyRalph is analyzing sales data...", expanded=True) as status:
+        try:
             final_state = app.invoke({"messages": st.session_state.messages}, config=config)
             
-            # Extract new messages
+            # Extract new messages for logging to st.status
             all_messages = final_state["messages"]
             new_messages = all_messages[len(st.session_state.messages):]
             
-            # Display ONLY the new messages logic (intermediate tool calls)
             for msg in new_messages:
-                # 1. Display agent thought/text first if present
-                content = extract_message_content(msg)
-                if isinstance(msg, AIMessage) and content:
-                    if "CHART_DATA:" in content:
-                        # Split text and chart data
-                        parts = content.split("CHART_DATA:", 1)
-                        if parts[0].strip():
-                            st.markdown(parts[0].strip())
-                        
-                        try:
-                            import json
-                            import plotly.graph_objects as go
-                            chart_json = json.loads(parts[1].strip())
-                            fig = go.Figure(chart_json)
-                            st.plotly_chart(fig, use_container_width=True)
-                        except Exception as e:
-                            st.warning(f"Could not render chart: {e}")
-                            st.code(parts[1].strip())
-                    else:
-                        st.markdown(content)
-                
-                # 2. Display Tool Calls
                 if isinstance(msg, AIMessage) and msg.tool_calls:
-                    for tool_call in msg.tool_calls:
-                        with st.status(f"🛠️ Using tool: {tool_call['name']}", expanded=False) as status:
-                            st.json(tool_call['args'])
-                            status.update(state="complete")
-                            
-                # 3. Display Tool Outputs
-                elif hasattr(msg, "tool_call_id"): # Check for ToolMessage
-                     with st.expander(f"📊 Tool Output"):
-                        try:
-                            import json
-                            content_json = json.loads(msg.content)
-                            st.json(content_json)
-                        except:
-                            # Handle potential large text outputs or non-JSON
-                            st.text(msg.content[:500] + "..." if len(msg.content) > 500 else msg.content)
-
-            # Update session state
+                    for tc in msg.tool_calls:
+                        st.write(f"🛠️ Using tool: **{tc['name']}**")
+                elif hasattr(msg, "tool_call_id"):
+                    st.write("📊 Data retrieved successfully.")
+            
             st.session_state.messages = all_messages
-            # Rerun to normalize the UI
-            st.rerun()
+            status.update(label="Analysis complete!", state="complete", expanded=False)
+        except Exception as e:
+            status.update(label="Oops, I ran into an error.", state="error")
+            st.error(f"Error: {e}")
+            st.session_state.messages.append(AIMessage(content=f"I'm sorry, I encountered an error while processing your request: {e}"))
+    
+    # Rerun to normalize the UI using the clean display loop at the top
+    st.rerun()

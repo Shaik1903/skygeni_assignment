@@ -1,22 +1,24 @@
 # Part 2: Data Exploration & Insights
 
-## 1. Exploratory Data Analysis
+## 1. Exploratory Data Analysis (EDA)
 
-The EDA engine (`src/eda.py`) performs **7 automated analysis modules** on the sales dataset. Each module produces structured outputs that feed both the dashboard visualizations and the insight generation pipeline.
+The primary deliverable for data exploration is the **[`01_EDA_and_Data_Insights.ipynb`](../notebooks/01_EDA_and_Data_Insights.ipynb)** notebook. This self-contained notebook provides a full narrative walkthrough of the dataset, featuring interactive visualizations and deep-dive analysis.
+
+While the notebook is the primary exploration tool, the underlying logic is powered by a modular EDA engine (`src/eda.py`) that performs **7 automated analysis modules**. This engine ensures consistent results across the notebook, the interactive dashboard, and the AI agent.
 
 ### Analysis Module Overview
 
-| Module | Function | What It Reveals |
-|--------|----------|-----------------|
-| **Win Rate Trends** | `analyze_win_rate_trends()` | Quarterly & monthly decomposition; detects trend direction (rising/stable/declining); identifies peak and trough quarters with exact rates |
-| **Segment Performance** | `analyze_segment_performance()` | Win rate cross-tabulation across region, industry, product type; relative performance scoring (above/below average) |
-| **Deal Characteristics** | `analyze_deal_characteristics()` | Won vs. Lost comparison on deal size and sales cycle; identifies statistical differences in deal profiles |
-| **Lead Source Analysis** | `analyze_lead_source_performance()` | Conversion rates, volume, average deal size, and total revenue by lead source |
-| **Sales Rep Deep Dive** | `analyze_sales_rep_deep()` | Individual rep profiling: win rate, volume, revenue, consistency; identifies top performers and coaching candidates |
-| **Time Patterns** | `analyze_time_patterns()` | Day-of-week, month-of-year, and seasonal effects on win rates and deal size |
-| **Auto Insights** | `generate_eda_insights()` | Rule-based engine that converts raw analysis into structured business insights with severity, action, and rationale |
+| Module | Purpose | Notebook Section |
+|--------|---------|------------------|
+| **Win Rate Trends** | Quarterly & monthly decomposition; detects trend direction | *2.3 Win Rate Over Time* |
+| **Segment Performance** | Cross-tabulation across region, industry, product type | *2.4 Segment Drill-down* |
+| **Deal Characteristics** | Won vs. Lost comparison on deal size and sales cycle | *3.1 Deal Size Analysis* |
+| **Lead Source Analysis** | Conversion rates, volume, and revenue by source | *3.3 Lead Source ROI* |
+| **Sales Rep Deep Dive** | Individual rep profiling and consistency scoring | *3.4 Sales Rep Efficiency* |
+| **Time Patterns** | Seasonal and cyclical effects on performance | *3.5 Temporal Patterns* |
+| **Auto Insights** | AI-ready structured business insights | *4.0 Multi-Metric Insights* |
 
-All modules are orchestrated by `run_full_eda()`, which returns a single dictionary consumed by the dashboard.
+The analysis returns structured findings consumed by the `Overview` page of the dashboard.
 
 ---
 
@@ -87,11 +89,13 @@ We designed 4 custom metrics beyond standard sales KPIs. These are not just refo
 
 **Question it answers:** *"Does chasing bigger deals actually hurt our win rate?"*
 
-**Method:**
-1. Bucket all deals into quintiles by deal size
-2. Calculate win rate per bucket
-3. Compute elasticity: `% change in win rate / % change in deal size`
-4. Identify the "sweet spot" — the bucket with the highest revenue potential (win rate × deal size)
+**Components:**
+
+| Component | Formula | Interpretation |
+|-----------|---------|----------------|
+| **Elasticity Coefficient** | `(% Δ Win Rate) / (% Δ Deal Size)` | < -1.0 = Highly Elastic (High risk). -0.5 to -1.0 = Moderate. > -0.5 = Inelastic (Low risk). |
+| **Revenue Sweet Spot** | `Win Rate × Avg Deal Size` | Identifies the size bucket that yields the highest expected revenue per unit of effort. |
+| **Win Rate Drop** | `WR(Smallest) - WR(Largest)` | Quantifies the total "conversion penalty" incurred at the top end of the market. |
 
 **Business value:** Tells the CRO whether "going upmarket" is a viable strategy or a value-destroying trap. The sweet spot range becomes a guardrail for deal pursuit decisions.
 
@@ -103,11 +107,14 @@ We designed 4 custom metrics beyond standard sales KPIs. These are not just refo
 
 **Question it answers:** *"Which market segments are gaining or losing steam?"*
 
-**Method:**
-1. Split data into recent quarters vs. historical quarters
-2. For each segment, calculate trends in: win rate, deal volume, and deal size
-3. Combine into a composite momentum score
-4. Categorize: Strong Growth, Growing, Stable, Declining, Sharp Decline
+**Components:**
+
+| Component | Weight | Calculation |
+|-----------|--------|-------------|
+| **Win Rate Momentum** | 50% | `(Recent Win Rate / Historical Win Rate) - 1` |
+| **Volume Momentum** | 30% | `(Recent Deal Count / Historical Deal Count) - 1` |
+| **Deal Size Momentum** | 20% | `(Recent Avg Deal Size / Historical Avg Deal Size) - 1` |
+| **Composite SMI** | 100% | Weighted sum of signals (Categorized: Growth → Sharp Decline) |
 
 **Business value:** Catches segment-level decay before it shows up in aggregate KPIs. Computable across any dimension — region, industry, product type, lead source.
 
@@ -119,7 +126,13 @@ We designed 4 custom metrics beyond standard sales KPIs. These are not just refo
 
 **Question it answers:** *"How much revenue are we generating per day of sales effort?"*
 
-**Formula:** `(Deal Amount / Sales Cycle Days)` normalized so that 1.0 = median velocity.
+**Components:**
+
+| Component | Formula | Interpretation |
+|-----------|---------|----------------|
+| **Revenue per Day (RPD)** | `Deal Amount / Sales Cycle Days` | Raw efficiency of revenue generation vs. time elapsed. |
+| **Normalization Factor** | `RPD / Median(All RPD)` | Benchmarks every deal against the organization's "average" efficiency. |
+| **Index Value (DVI)** | `Normalized RPD` | > 1.0 = Above-average efficiency. < 1.0 = Slower than organization average. |
 
 **Business value:** A $100K deal closing in 120 days (DVI = 0.8) is less efficient than a $50K deal closing in 30 days (DVI = 1.6). DVI reveals which deal profiles, reps, and segments generate the most revenue per unit of sales capacity.
 
@@ -136,7 +149,7 @@ We designed 4 custom metrics beyond standard sales KPIs. These are not just refo
 - Business action (concrete, specific recommendation)
 - Estimated impact (quantified when possible)
 
-### Layer 2: LLM-Powered Insights (Optional, Enhanced)
+### Layer 2: LLM-Powered Insights (Enhanced)
 `llm_insights.py` sends the metric summaries to **Gemini 2.5 Flash** to produce deeper, CRO-level narratives. The LLM sees all metrics in context and can identify cross-metric correlations that rule-based logic misses (e.g., "stalling deals are concentrated in your declining regions — this suggests a systemic issue, not individual rep problems").
 
 If the API key is unavailable or the call fails, the system silently falls back to Layer 1 with zero downtime.

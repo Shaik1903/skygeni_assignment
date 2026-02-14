@@ -10,7 +10,8 @@
 
 ```bash
 # 1. Clone and enter the project
-cd skygeni_opus
+cd skygeni
+git clone https://github.com/Shaik1903/skygeni_assignment.git
 
 # 2. Create virtual environment (recommended)
 python -m venv venv
@@ -35,21 +36,42 @@ streamlit run app.py
 Open your browser at `http://localhost:8501`. The dashboard has 4 pages accessible from the sidebar.
 
 ---
-## � For Recruiters: Where to Find Everything
+
+## ⚡ Fast Track: Jump Straight to the App
+
+If you're too bored to go through the repo and just want to see the system in action:
+
+1.  **Set up the environment:** `pip install -r requirements.txt`
+2.  **Launch the dashboard:** `streamlit run app.py`
+3.  **Explore:** Navigate the sidebar to see the **Win Rate Drivers**, **Revenue Forecast**, and the **CRM Agent**.
+
+---
+
+## �️ App Showcase
+
+| Dashboard Overview | Win Rate Drivers |
+|:--:|:--:|
+| ![Dashboard Overview](agent_UI_images/dashboard.png) | ![Win Rate Drivers](agent_UI_images/win_rate_drivers.png) |
+
+| Revenue Forecast | CRM Agent (SkyRalph) |
+|:--:|:--:|
+| ![Revenue Forecast](agent_UI_images/forecast.png) | ![CRM Agent](agent_UI_images/CRM_agent.png) |
+
+---
+
+## �📂 Deliverables Overview
 
 **All 5 parts of the assignment are complete. Here's where to find each deliverable:**
 
 | Part | What to Review | Location |
 |------|---------------|----------|
 | **Part 1: Problem Framing** | Problem definition, metrics design, business context | [`docs/1_problem_framing.md`](docs/1_problem_framing.md) |
-| **Part 2: Data Exploration** | EDA, insights, visualizations | [`notebooks/01_EDA_and_Data_Insights.ipynb`](notebooks/01_EDA_and_Data_Insights.ipynb) ⭐ |
-| **Part 3: Decision Engine** | All 4 engines (B, C, D) with code & results | [`notebooks/02_Decision_Engine.ipynb`](notebooks/02_Decision_Engine.ipynb) ⭐ |
+| **Part 2: Data Exploration** | EDA, insights, visualizations | [`notebooks/01_EDA_and_Data_Insights.ipynb`](notebooks/01_EDA_and_Data_Insights.ipynb) ⭐ \| [`docs/2_data_exploration.md`](docs/2_data_exploration.md) |
+| **Part 3: Decision Engine** | All 4 engines (B, C, D) with code & results | [`notebooks/02_Decision_Engine.ipynb`](notebooks/02_Decision_Engine.ipynb) ⭐ \| [`docs/3_decision_engine.md`](docs/3_decision_engine.md) |
 | **Part 4: System Design** | Architecture, data flow, production considerations | [`docs/4_system_design.md`](docs/4_system_design.md) |
 | **Part 5: Reflection** | Assumptions, limitations, next steps | [`docs/5_reflection.md`](docs/5_reflection.md) |
 
-**⭐ Start here:** The **notebooks** are self-contained with all code, visualizations, and explanations. All generated visualizations are also available as high-resolution PNGs in the [`images/`](images/) folder for quick reference.
-
-**🚀 Live Demo:** Run `streamlit run app.py` to see the interactive dashboard with all 4 decision engines.
+**⭐ Start here:** Review the **notebooks** for a self-contained walkthrough with all code and visualizations, and the **[`docs/`](docs/)** folder for detailed technical framing, system design, and reflections. All generated visualizations are also available as high-resolution PNGs in the [`images/`](images/) folder for quick reference.
 
 ---
 
@@ -220,6 +242,21 @@ See [docs/system_design.md](docs/system_design.md) for architecture diagrams, da
 
 ---
 
+## 🤖 Meet SkyRalph: Your AI CRM Agent
+
+The flagship feature of this system is **SkyRalph**, a conversational CRM agent built with LangGraph and Gemini 2.5 Flash. Instead of manually digging through reports, you can simply ask questions in plain English:
+
+- *"Give me a summary of our performance"*
+- *"What's affecting our win rate?"*
+- *"What's our revenue projection for the next 8 weeks?"*
+- *"Which industry has the highest average deal size?"*
+
+#### SkyRalph doesn't just chat - he **acts**. He has direct access to our analytics engine, forecasting models, and raw sales data to provide instant, data-backed insights and reports.
+
+![SkyRalph in action](agent_UI_images/CRM_agent.png)
+
+---
+
 ## 🛠️ Tech Stack & Key Decisions
 
 | Component | Technology | Why |
@@ -243,4 +280,4 @@ See [docs/system_design.md](docs/system_design.md) for architecture diagrams, da
 | **📊 Overview** | KPIs, win rate trends, revenue charts, heatmap, custom metrics spotlight, AI-generated insights | Region/Industry filters, tab switching |
 | **🎯 Win Rate Drivers** | SHAP feature importance, WRE sweet spot, SMI momentum, strategic recommendations | Interactive charts, segment tabs |
 | **📈 Revenue Forecast** | Historical + forecast chart with confidence bands, model validation, driver analysis | Forecast horizon slider, scenario selector, component toggle |
-| **💬 CRM Agent** | Natural language chat with SkyRalph for ad-hoc analytics queries | Free-text input, inline chart rendering |
+| **💬 CRM Agent** | Natural language chat with SkyRalph for ad-hoc analytics queries | Free-text input, data tables, markdown reports |

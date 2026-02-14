@@ -56,19 +56,27 @@ Standard metrics (win rate, pipeline value, average deal size) are necessary but
 
 ### Custom Metric 2: Win Rate Elasticity (WRE) — *"Does chasing bigger deals actually hurt us?"*
 
-**Formula:** Elasticity coefficient between deal size buckets and their corresponding win rates.
+| Component | Formula | What It Measures |
+|-----------|---------|-----------------|
+| **Elasticity Coefficient** | `(% Δ Win Rate) / (% Δ Deal Size)` | Sensitivity of win probability to deal size increases |
+| **Revenue Sweet Spot** | `Win Rate × Avg Deal Size` | The deal size bucket that maximizes expected revenue per deal |
 
-**Why it matters:** If a 20% increase in deal size leads to a 50% drop in win probability, the team is destroying value by pursuing "elephant deals." WRE quantifies this trade-off and identifies the **sweet spot**—the deal size range with the optimal balance of win probability and revenue potential.
+**Why it matters:** If Win Rate Elasticity is highly negative (e.g., < -1.0), a 10% increase in deal size leads to a >10% drop in win rate. This signals that the team is destroying value by pursuing "elephant deals" without the necessary process or skillsets. WRE identifies the **sweet spot**—the deal size range where the team is most efficient.
 
-**Action it drives:** Set deal size guardrails. Route outsized deals to specialist teams.
+**Action it drives:** Set deal size guardrails for generalist reps. Route deals above the tipping point to enterprise specialists or require mandatory executive sponsorship for high-elasticity segments.
 
 ### Custom Metric 3: Segment Momentum Index (SMI) — *"Which segments are growing vs. dying?"*
 
-**Formula:** Composite of `Win Rate Trend + Volume Trend + Deal Size Trend` over recent vs. historical quarters.
+| Component | Weight | Delta (Δ) Calculation |
+|-----------|--------|----------------------|
+| **Win Rate Momentum** | 50% | `(Recent Win Rate / Historical Win Rate) - 1` |
+| **Volume Momentum** | 30% | `(Recent Deal Count / Historical Deal Count) - 1` |
+| **Velocity Momentum** | 20% | `(Recent Avg Deal Size / Historical Avg Deal Size) - 1` |
+| **Composite SMI** | 100% | Weighted sum of the above signals |
 
-**Why it matters:** A segment can appear "fine" in aggregate while its trend is deteriorating quarter-over-quarter. SMI catches this momentum shift early—before a full-blown crisis shows up in lagging KPIs. It prevents the "melting ice cube" problem.
+**Why it matters:** A segment can appear "healthy" in aggregate while its momentum is silently deteriorating. SMI catches early-stage "melting ice cubes" by combining volume, size, and conversion signals. It prevents the CRO from being surprised by next quarter's results.
 
-**Action it drives:** Double down on high-momentum segments. Investigate or exit declining ones.
+**Action it drives:** "Double down" on high-SMI segments (increase marketing/BDR spend). For negative SMI segments, trigger a root-cause investigation (competitive entry, rep turnover, or product-market drift).
 
 ### Custom Metric 4: Deal Velocity Index (DVI) — *"How much revenue per day of sales effort?"*
 
