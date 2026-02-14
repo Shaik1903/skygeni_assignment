@@ -60,9 +60,7 @@ If you're too bored to go through the repo and just want to see the system in ac
 
 ### 🎬 Demo Video
 
-https://github.com/user-attachments/assets/sygeni_assignment_Demo_video.mp4
-
-> *Can't see the video? [Download it directly](sygeni_assignment_Demo_video.mp4)*
+ [DEMO VIDEO](sygeni_assignment_Demo_video.mp4)*
 
 ---
 
