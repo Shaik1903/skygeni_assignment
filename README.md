@@ -41,13 +41,13 @@ Open your browser at `http://localhost:8501`. The dashboard has 4 pages accessib
 
 | Part | What to Review | Location |
 |------|---------------|----------|
-| **Part 1: Problem Framing** | Problem definition, metrics design, business context | [`docs/problem_framing.md`](docs/problem_framing.md) |
+| **Part 1: Problem Framing** | Problem definition, metrics design, business context | [`docs/1_problem_framing.md`](docs/1_problem_framing.md) |
 | **Part 2: Data Exploration** | EDA, insights, visualizations | [`notebooks/01_EDA_and_Data_Insights.ipynb`](notebooks/01_EDA_and_Data_Insights.ipynb) ⭐ |
 | **Part 3: Decision Engine** | All 4 engines (B, C, D) with code & results | [`notebooks/02_Decision_Engine.ipynb`](notebooks/02_Decision_Engine.ipynb) ⭐ |
-| **Part 4: System Design** | Architecture, data flow, production considerations | [`docs/system_design.md`](docs/system_design.md) |
-| **Part 5: Reflection** | Assumptions, limitations, next steps | [`docs/reflection.md`](docs/reflection.md) |
+| **Part 4: System Design** | Architecture, data flow, production considerations | [`docs/4_system_design.md`](docs/4_system_design.md) |
+| **Part 5: Reflection** | Assumptions, limitations, next steps | [`docs/5_reflection.md`](docs/5_reflection.md) |
 
-**⭐ Start here:** The **notebooks** are self-contained with all code, visualizations, and explanations. They can be viewed directly on GitHub or executed locally.
+**⭐ Start here:** The **notebooks** are self-contained with all code, visualizations, and explanations. All generated visualizations are also available as high-resolution PNGs in the [`images/`](images/) folder for quick reference.
 
 **🚀 Live Demo:** Run `streamlit run app.py` to see the interactive dashboard with all 4 decision engines.
 
@@ -77,11 +77,14 @@ skygeni_opus/
 │   ├── 01_EDA_and_Data_Insights.ipynb  # Walkthrough: EDA, custom metrics, charts
 │   └── 02_Decision_Engine.ipynb        # Walkthrough: XGBoost, SHAP, Prophet, anomaly detection
 ├── docs/
-│   ├── problem_framing.md          # Part 1: Problem Framing
-│   ├── data_exploration.md         # Part 2: Data Exploration & Insights
-│   ├── decision_engine.md          # Part 3: Decision Engine (all 4 engines)
-│   ├── system_design.md            # Part 4: System Design
-│   └── reflection.md               # Part 5: Reflection
+│   ├── 1_problem_framing.md          # Part 1: Problem Framing
+│   ├── 2_data_exploration.md         # Part 2: Data Exploration & Insights
+│   ├── 3_decision_engine.md          # Part 3: Decision Engine (all 4 engines)
+│   ├── 4_system_design.md            # Part 4: System Design
+│   └── 5_reflection.md               # Part 5: Reflection
+├── images/                         # Visualizations (EDA plots, Model Importance, Forecasts)
+│   ├── eda/                        # Distribution, trend, and segment analysis plots
+│   └── decision_engine/            # SHAP importance, Anomaly detection, and Forecast results
 ├── requirements.txt
 └── README.md                       # ← You are here
 ```
