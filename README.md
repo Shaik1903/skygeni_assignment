@@ -42,12 +42,13 @@ Open your browser at `http://localhost:8501`. The dashboard has 4 pages accessib
 If you're too bored to go through the repo and just want to see the system in action:
 
 1.  **Set up the environment:** `pip install -r requirements.txt`
-2.  **Launch the dashboard:** `streamlit run app.py`
-3.  **Explore:** Navigate the sidebar to see the **Win Rate Drivers**, **Revenue Forecast**, and the **CRM Agent**.
+2.  **Add the API key in .env file:** `GOOGLE_API_KEY=your_actual_api_key_here`
+3.  **Launch the dashboard:** `streamlit run app.py`
+4.  **Explore:** Navigate the sidebar to see the **Win Rate Drivers**, **Revenue Forecast**, and the **CRM Agent**.
 
 ---
 
-## �️ App Showcase
+## 📱 App Showcase
 
 | Dashboard Overview | Win Rate Drivers |
 |:--:|:--:|
@@ -57,9 +58,15 @@ If you're too bored to go through the repo and just want to see the system in ac
 |:--:|:--:|
 | ![Revenue Forecast](agent_UI_images/forecast.png) | ![CRM Agent](agent_UI_images/CRM_agent.png) |
 
+### 🎬 Demo Video
+
+https://github.com/user-attachments/assets/sygeni_assignment_Demo_video.mp4
+
+> *Can't see the video? [Download it directly](sygeni_assignment_Demo_video.mp4)*
+
 ---
 
-## �📂 Deliverables Overview
+## 📂 Deliverables Overview
 
 **All 5 parts of the assignment are complete. Here's where to find each deliverable:**
 
